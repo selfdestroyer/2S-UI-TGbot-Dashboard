@@ -20,8 +20,13 @@ load_dotenv(ENV_PATH)
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_TG_ID = int(os.getenv("ADMIN_TG_ID", "0"))
 DB_PATH = os.getenv("DB_PATH", "/usr/local/s-ui/db/s-ui.db")
-PROJECT_NAME = os.getenv("PROJECT_NAME", "VPN Service")
-SUB_DOMAIN = os.getenv("SUB_DOMAIN", "sub.example.com")
+_raw_sub_domain = os.getenv("SUB_DOMAIN", "sub.example.com").strip().rstrip('/')
+if _raw_sub_domain.startswith("https://"):
+    SUB_DOMAIN = _raw_sub_domain[8:]
+elif _raw_sub_domain.startswith("http://"):
+    SUB_DOMAIN = _raw_sub_domain[7:]
+else:
+    SUB_DOMAIN = _raw_sub_domain
 SUPPORT_BOT_USERNAME = os.getenv("SUPPORT_BOT_USERNAME", "your_support_bot")
 SERVICE_GROUP_NAME = os.getenv("SERVICE_GROUP_NAME", "Инфо-канал сервиса")
 SERVICE_GROUP_URL = os.getenv("SERVICE_GROUP_URL", "https://t.me/your_channel")

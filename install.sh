@@ -121,6 +121,7 @@ check_prerequisites() {
 }
 
 run_wizard() {
+    SUB_DOMAIN="$(echo "$SUB_DOMAIN" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
     if [ "$NON_INTERACTIVE" = true ]; then
         if [ -z "$SUB_DOMAIN" ] || [ -z "$BOT_TOKEN" ] || [ -z "$ADMIN_TG_ID" ]; then
             log_error "В неинтерактивном режиме обязательно укажите --domain, --token и --admin!"
@@ -135,11 +136,12 @@ run_wizard() {
     while [ -z "$SUB_DOMAIN" ]; do
         echo -e "${YELLOW}Введите домен или поддомен (A-запись должна указывать на IP сервера):${NC}"
         read -r -p "Домен [например sub.example.com]: " input_domain
-        SUB_DOMAIN="$(echo "$input_domain" | xargs)"
+        SUB_DOMAIN="$(echo "$input_domain" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
         if [ -z "$SUB_DOMAIN" ]; then
             log_warning "Домен не может быть пустым!"
         fi
     done
+    SUB_DOMAIN="$(echo "$SUB_DOMAIN" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
 
     read -r -p "Название VPN сервиса [$PROJECT_NAME]: " input_project
     [ -n "$input_project" ] && PROJECT_NAME="$input_project"

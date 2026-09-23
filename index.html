@@ -548,7 +548,7 @@
     </svg>
 
     <div class="container">
-        <h1>podnyatie.space</h1>
+        <h1 id="brand-title">podnyatie.space</h1>
         <p class="subtitle">Установка конфигурации VPN</p>
 
         <div id="error-msg">
@@ -719,6 +719,15 @@
     </div>
 
     <script>
+        // Динамическое определение домена и заголовков
+        if (window.location.hostname) {
+            document.title = "Настройка VPN - " + window.location.hostname;
+            const brandEl = document.getElementById("brand-title");
+            if (brandEl && (brandEl.textContent === "podnyatie.space" || !brandEl.textContent)) {
+                brandEl.textContent = window.location.hostname;
+            }
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         let subPath = urlParams.get('url');
 
@@ -731,7 +740,9 @@
         const CIRCLE_CIRCUMFERENCE = 283; // 2 * pi * 45
 
         if (subPath && subPath !== "/") {
-            const fullSubUrl = "https://podnyatie.space:2096/sub" + (subPath.startsWith('/') ? subPath : '/' + subPath);
+            const subBase = (window.PANEL_SUB_URL || (window.location.origin + "/sub")).replace(/\/+$/, '');
+            const cleanPath = subPath.startsWith('/') ? subPath : '/' + subPath;
+            const fullSubUrl = subBase + cleanPath;
             
             document.getElementById('sub-url').value = fullSubUrl;
             document.getElementById('btn-hiddify').href = "hiddify://import/" + fullSubUrl;
