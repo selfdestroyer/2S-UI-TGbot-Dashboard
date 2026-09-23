@@ -719,12 +719,21 @@
     </div>
 
     <script>
-        // Динамическое определение домена и заголовков
-        if (window.location.hostname) {
-            document.title = "Настройка VPN - " + window.location.hostname;
+        // Конфигурация основного домена панели 2S-UI (без префикса sub.)
+        window.PANEL_DOMAIN = window.PANEL_DOMAIN || "podnyatie.space";
+        window.PANEL_PORT = window.PANEL_PORT || "2096";
+
+        const currentHost = window.location.hostname;
+        const rootDomain = (window.PANEL_DOMAIN && window.PANEL_DOMAIN !== "podnyatie.space") 
+            ? window.PANEL_DOMAIN 
+            : (currentHost ? currentHost.replace(/^sub\./i, '') : "podnyatie.space");
+        const panelPort = window.PANEL_PORT || "2096";
+
+        if (rootDomain) {
+            document.title = "Настройка VPN - " + rootDomain;
             const brandEl = document.getElementById("brand-title");
-            if (brandEl && (brandEl.textContent === "podnyatie.space" || !brandEl.textContent)) {
-                brandEl.textContent = window.location.hostname;
+            if (brandEl) {
+                brandEl.textContent = rootDomain;
             }
         }
 
@@ -740,8 +749,9 @@
         const CIRCLE_CIRCUMFERENCE = 283; // 2 * pi * 45
 
         if (subPath && subPath !== "/") {
-            const subBase = (window.PANEL_SUB_URL || (window.location.origin + "/sub")).replace(/\/+$/, '');
             const cleanPath = subPath.startsWith('/') ? subPath : '/' + subPath;
+            // Прямая ссылка на подписку в панели: https://домен_пользователя:2096/sub/имя_пользователя
+            const subBase = (window.PANEL_SUB_URL || ("https://" + rootDomain + ":" + panelPort + "/sub")).replace(/\/+$/, '');
             const fullSubUrl = subBase + cleanPath;
             
             document.getElementById('sub-url').value = fullSubUrl;

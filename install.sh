@@ -45,6 +45,7 @@ INSTALL_DIR="/var/www/vpn-service"
 CERTBOT_DIR="/var/www/certbot"
 
 # Значения по умолчанию
+MAIN_DOMAIN=""
 SUB_DOMAIN=""
 PROJECT_NAME="My VPN Service"
 BOT_TOKEN=""
@@ -63,7 +64,8 @@ show_help() {
     echo "Использование: sudo bash install.sh [ОПЦИИ]"
     echo ""
     echo "Опции:"
-    echo "  --domain <domain>        Домен подписки (например: sub.example.com)"
+    echo "  --main-domain <domain>   Основной домен сервера с панелью 2S-UI (например: example.com)"
+    echo "  --domain <domain>        Поддомен для веб-дашборда и бота (например: sub.example.com)"
     echo "  --token <token>          Токен Telegram-бота от @BotFather"
     echo "  --admin <id>             ID администратора в Telegram"
     echo "  --project <name>         Название проекта (по умолчанию: 'My VPN Service')"
@@ -79,7 +81,8 @@ show_help() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --domain) SUB_DOMAIN="$2"; shift 2 ;;
+        --main-domain) MAIN_DOMAIN="$2"; shift 2 ;;
+        --domain|--subdomain) SUB_DOMAIN="$2"; shift 2 ;;
         --token) BOT_TOKEN="$2"; shift 2 ;;
         --admin) ADMIN_TG_ID="$2"; shift 2 ;;
         --project) PROJECT_NAME="$2"; shift 2 ;;
@@ -121,10 +124,18 @@ check_prerequisites() {
 }
 
 run_wizard() {
+    MAIN_DOMAIN="$(echo "$MAIN_DOMAIN" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
     SUB_DOMAIN="$(echo "$SUB_DOMAIN" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
+
     if [ "$NON_INTERACTIVE" = true ]; then
+        if [ -z "$MAIN_DOMAIN" ] && [ -n "$SUB_DOMAIN" ]; then
+            MAIN_DOMAIN="$(echo "$SUB_DOMAIN" | sed -E 's~^sub\.~~')"
+        fi
+        if [ -z "$SUB_DOMAIN" ] && [ -n "$MAIN_DOMAIN" ]; then
+            SUB_DOMAIN="sub.${MAIN_DOMAIN}"
+        fi
         if [ -z "$SUB_DOMAIN" ] || [ -z "$BOT_TOKEN" ] || [ -z "$ADMIN_TG_ID" ]; then
-            log_error "В неинтерактивном режиме обязательно укажите --domain, --token и --admin!"
+            log_error "В неинтерактивном режиме обязательно укажите --main-domain (или --domain), --token и --admin!"
             exit 1
         fi
         return
@@ -132,16 +143,33 @@ run_wizard() {
 
     echo -e "${BOLD}📋 Мастер первоначальной настройки${NC}\n"
 
-    # Домен подписки
-    while [ -z "$SUB_DOMAIN" ]; do
-        echo -e "${YELLOW}Введите домен или поддомен (A-запись должна указывать на IP сервера):${NC}"
-        read -r -p "Домен [например sub.example.com]: " input_domain
-        SUB_DOMAIN="$(echo "$input_domain" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
-        if [ -z "$SUB_DOMAIN" ]; then
-            log_warning "Домен не может быть пустым!"
+    # 1. Основной домен сервера с панелью 2S-UI
+    while [ -z "$MAIN_DOMAIN" ]; do
+        echo -e "${YELLOW}1. Основной домен сервера, на котором работает панель 2S-UI:${NC}"
+        echo -e "   (На этот домен направлены прямые ссылки на подписки панели: https://домен:${PANEL_PORT}/sub/...)"
+        read -r -p "Основной домен [например example.com]: " input_main
+        MAIN_DOMAIN="$(echo "$input_main" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
+        if [ -z "$MAIN_DOMAIN" ]; then
+            log_warning "Основной домен не может быть пустым!"
         fi
     done
+
+    # 2. Поддомен для веб-дашборда и Telegram-бота
+    if [ -z "$SUB_DOMAIN" ]; then
+        default_sub="sub.${MAIN_DOMAIN}"
+        echo -e "\n${YELLOW}2. Поддомен для веб-дашборда (на него бот выдает ссылки пользователям):${NC}"
+        echo -e "   (A-запись этого поддомена должна указывать на IP этого сервера)"
+        read -r -p "Поддомен [$default_sub]: " input_sub
+        if [ -n "$input_sub" ]; then
+            SUB_DOMAIN="$(echo "$input_sub" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
+        else
+            SUB_DOMAIN="$default_sub"
+        fi
+    fi
     SUB_DOMAIN="$(echo "$SUB_DOMAIN" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
+
+    read -r -p "Порт панели 2S-UI для выдачи подписок [$PANEL_PORT]: " input_panel_port
+    [ -n "$input_panel_port" ] && PANEL_PORT="$input_panel_port"
 
     read -r -p "Название VPN сервиса [$PROJECT_NAME]: " input_project
     [ -n "$input_project" ] && PROJECT_NAME="$input_project"
@@ -176,9 +204,6 @@ run_wizard() {
         log_warning "Сервисы будут настроены, но для их работы потребуется наличие этой БД."
     fi
 
-    read -r -p "Порт панели 2S-UI для выдачи подписок [$PANEL_PORT]: " input_panel_port
-    [ -n "$input_panel_port" ] && PANEL_PORT="$input_panel_port"
-
     echo -e "\n${YELLOW}Настроить бесплатный SSL Let's Encrypt через Certbot?${NC}"
     read -r -p "[Y/n]: " input_ssl
     if [[ "$input_ssl" =~ ^[Nn]$ ]]; then
@@ -192,14 +217,14 @@ run_wizard() {
     echo ""
     echo -e "${CYAN}------------------------------------------------------------------${NC}"
     echo -e "${BOLD}Параметры установки:${NC}"
-    echo "  Целевая папка:     $INSTALL_DIR"
-    echo "  Домен:             $SUB_DOMAIN"
-    echo "  Проект:            $PROJECT_NAME"
-    echo "  Admin ID:          $ADMIN_TG_ID"
-    echo "  Саппорт:           @$SUPPORT_BOT_USERNAME"
-    echo "  База 2S-UI:        $DB_PATH"
-    echo "  Порт 2S-UI:        $PANEL_PORT"
-    echo "  Настройка SSL:     $SETUP_SSL"
+    echo "  Целевая папка:                  $INSTALL_DIR"
+    echo "  Основной домен (панель 2S-UI):  $MAIN_DOMAIN (порт $PANEL_PORT)"
+    echo "  Поддомен дашборда (для бота):   $SUB_DOMAIN"
+    echo "  Проект:                         $PROJECT_NAME"
+    echo "  Admin ID:                       $ADMIN_TG_ID"
+    echo "  Саппорт:                        @$SUPPORT_BOT_USERNAME"
+    echo "  База 2S-UI:                     $DB_PATH"
+    echo "  Настройка SSL:                  $SETUP_SSL"
     echo -e "${CYAN}------------------------------------------------------------------${NC}"
     read -r -p "Начать установку? [Y/n]: " proceed
     if [[ "$proceed" =~ ^[Nn]$ ]]; then
@@ -236,7 +261,9 @@ deploy_project_files() {
     # Кастомизация фронтенда
     if [ -f "${INSTALL_DIR}/index.html" ]; then
         log_info "Адаптация веб-интерфейса index.html под домен и проект..."
-        sed -i "s/podnyatie\.space/${SUB_DOMAIN}/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/window\.PANEL_DOMAIN = window\.PANEL_DOMAIN || \".*\"/window.PANEL_DOMAIN = \"${MAIN_DOMAIN}\"/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/window\.PANEL_PORT = window\.PANEL_PORT || \".*\"/window.PANEL_PORT = \"${PANEL_PORT}\"/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/podnyatie\.space/${MAIN_DOMAIN}/g" "${INSTALL_DIR}/index.html"
         sed -i "s/podnyatie_support_bot/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
         sed -i "s/podnyatie_vpn_bot/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
     fi
@@ -260,7 +287,14 @@ ADMIN_TG_ID=${ADMIN_TG_ID}
 DB_PATH=${DB_PATH}
 BOT_DATA_DB=${INSTALL_DIR}/bot_data.db
 PROJECT_NAME=${PROJECT_NAME}
+
+# Основной домен сервера с панелью 2S-UI и порт для сырых подписок
+MAIN_DOMAIN=${MAIN_DOMAIN}
+PANEL_PORT=${PANEL_PORT}
+
+# Поддомен веб-дашборда (ссылки, которые бот отправляет клиентам: https://{SUB_DOMAIN}/{client_name})
 SUB_DOMAIN=${SUB_DOMAIN}
+
 SUPPORT_BOT_USERNAME=${SUPPORT_BOT_USERNAME}
 SERVICE_GROUP_NAME=${SERVICE_GROUP_NAME}
 SERVICE_GROUP_URL=${SERVICE_GROUP_URL}
@@ -401,9 +435,9 @@ print_summary() {
     echo -e "${GREEN}${BOLD}==================================================================${NC}"
     echo ""
     echo -e "🌐 ${BOLD}Ссылки сервиса:${NC}"
-    echo -e "  • Веб-дашборд и валидация:  ${CYAN}${PROTOCOL}://${SUB_DOMAIN}/{client_name}${NC}"
-    echo -e "  • Проксирование подписок:   ${CYAN}${PROTOCOL}://${SUB_DOMAIN}/sub/{client_name}${NC}"
-    echo -e "  • Telegram саппорт:         ${CYAN}@${SUPPORT_BOT_USERNAME}${NC}"
+    echo -e "  • Ссылка от бота (веб-дашборд):     ${CYAN}${PROTOCOL}://${SUB_DOMAIN}/{client_name}${NC}"
+    echo -e "  • Ссылка на подписку (из панели):   ${CYAN}https://${MAIN_DOMAIN}:${PANEL_PORT}/sub/{client_name}${NC}"
+    echo -e "  • Telegram саппорт:                 ${CYAN}@${SUPPORT_BOT_USERNAME}${NC}"
     echo ""
     echo -e "🛠 ${BOLD}Управление сервисами:${NC}"
     echo -e "  • Статус бота:              ${YELLOW}systemctl status vpn-bot${NC}"
