@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройка VPN - podnyatie.space</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b1120;
+            --card-bg: #151f32;
+            --card-surface: #1a263d;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --border: #29354d;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --cyan: #06b6d4;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 30px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+        .container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 34px 32px;
+            max-width: 650px;
+            width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.65);
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 26px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+        }
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        /* Карточка статистики подписки */
+        .stats-card {
+            background: linear-gradient(145deg, rgba(26, 38, 61, 0.95), rgba(15, 23, 42, 0.98));
+            border: 1px solid rgba(99, 102, 241, 0.28);
+            border-radius: 18px;
+            padding: 22px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .stats-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stats-title .user-badge {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.08);
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: none;
+        }
+        .expiry-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        .expiry-badge.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border-color: rgba(245, 158, 11, 0.35);
+        }
+        .expiry-badge.expired {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+
+        /* Визуализация трафика */
+        .traffic-overview {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            margin-bottom: 18px;
+        }
+        .circular-chart-container {
+            position: relative;
+            width: 104px;
+            height: 104px;
+            flex-shrink: 0;
+        }
+        .circular-chart {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        .circle-bg {
+            fill: none;
+            stroke: #29354d;
+            stroke-width: 3.5;
+        }
+        .circle-bar {
+            fill: none;
+            stroke-width: 3.8;
+            stroke-linecap: round;
+            stroke-dasharray: 283;
+            stroke-dashoffset: 283;
+            transition: stroke-dashoffset 1s ease-out, stroke 0.3s;
+        }
+        .chart-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+        }
+        .chart-percent {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1;
+        }
+        .chart-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Метрики */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            flex-grow: 1;
+        }
+        .metric-item {
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 9px 12px;
+        }
+        .metric-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+        .metric-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        /* Полоса прогресса */
+        .progress-bar-wrap {
+            width: 100%;
+            height: 6px;
+            background-color: #29354d;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            border-radius: 10px;
+            transition: width 1s ease-out, background 0.3s;
+        }
+
+        /* Подвал карточки статистики */
+        .stats-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .refresh-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 3px 8px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .refresh-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .refresh-btn svg {
+            width: 13px;
+            height: 13px;
+            transition: transform 0.6s ease;
+        }
+        .refresh-btn.spinning svg {
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Ссылка на подписку */
+        .link-box {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 8px 10px 8px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .link-box input {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            width: 100%;
+            min-width: 0;
+            outline: none;
+            font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            letter-spacing: -0.2px;
+        }
+        .copy-btn {
+            background-color: var(--border);
+            color: var(--text-main);
+            border: none;
+            padding: 9px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .copy-btn:hover {
+            background-color: #3b4b6b;
+        }
+
+        /* Заголовки секций */
+        h2 {
+            font-size: 13px;
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            font-weight: 600;
+        }
+
+        /* Секция приложений */
+        .app-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .app-item {
+            background: rgba(0, 0, 0, 0.18);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+        }
+        .app-btn, .app-action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--accent);
+            color: white;
+            text-decoration: none;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-weight: 500;
+            border: none;
+            width: 100%;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .app-btn:hover, .app-action-btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+        .app-icon {
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        .app-name {
+            flex-grow: 1;
+            text-align: left;
+        }
+        .platform {
+            font-size: 11px;
+            background-color: rgba(255,255,255,0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .store-links {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .store-btn {
+            flex: 1;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 7px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .store-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border-color: var(--accent);
+        }
+
+        /* Быстрые действия: Покупка и Поддержка */
+        .service-actions-section {
+            margin-top: 24px;
+        }
+        .actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .action-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            padding: 14px 16px;
+            border-radius: 14px;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .action-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* Кнопка покупки */
+        .action-card.buy-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(168, 85, 247, 0.12));
+            border: 1px solid rgba(99, 102, 241, 0.35);
+        }
+        .action-card.buy-card:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(168, 85, 247, 0.18));
+            border-color: #818cf8;
+            box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.35);
+        }
+        .action-icon-box.buy-icon {
+            background: rgba(99, 102, 241, 0.22);
+            color: #a5b4fc;
+        }
+
+        /* Кнопка поддержки */
+        .action-card.support-card {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(14, 165, 233, 0.12));
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+        .action-card.support-card:hover {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(14, 165, 233, 0.2));
+            border-color: #38bdf8;
+            box-shadow: 0 8px 20px -6px rgba(14, 165, 233, 0.3);
+        }
+        .action-icon-box.support-icon {
+            background: rgba(6, 182, 212, 0.2);
+            color: #67e8f9;
+        }
+
+        .action-icon-box {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .action-icon-box svg {
+            width: 20px;
+            height: 20px;
+        }
+        .action-content {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex-grow: 1;
+        }
+        .action-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .action-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .action-arrow {
+            color: var(--text-muted);
+            opacity: 0.7;
+            transition: transform 0.2s, opacity 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .action-card:hover .action-arrow {
+            opacity: 1;
+            transform: translateX(2px);
+            color: var(--text-main);
+        }
+
+        #error-msg {
+            display: none;
+            text-align: center;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 16px;
+            border-radius: 14px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .footer {
+            margin-top: 26px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* SVG градиенты */
+        svg.defs-only {
+            display: block;
+            width: 0;
+            height: 0;
+        }
+
+        /* Мобильная адаптивность */
+        @media (max-width: 520px) {
+            .container {
+                padding: 24px 18px;
+            }
+            .link-box input {
+                font-size: 11.5px;
+            }
+            .actions-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .traffic-overview {
+                gap: 14px;
+            }
+            .circular-chart-container {
+                width: 90px;
+                height: 90px;
+            }
+            .chart-percent {
+                font-size: 19px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Вспомогательные градиенты для кругового индикатора -->
+    <svg class="defs-only" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="gradient-normal" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#6366f1" />
+                <stop offset="100%" stop-color="#10b981" />
+            </linearGradient>
+            <linearGradient id="gradient-warning" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#f59e0b" />
+                <stop offset="100%" stop-color="#ea580c" />
+            </linearGradient>
+            <linearGradient id="gradient-danger" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ef4444" />
+                <stop offset="100%" stop-color="#b91c1c" />
+            </linearGradient>
+        </defs>
+    </svg>
+
+    <div class="container">
+        <h1>podnyatie.space</h1>
+        <p class="subtitle">Установка конфигурации VPN</p>
+
+        <div id="error-msg">
+            Ошибка: Ссылка на подписку не найдена. Убедитесь, что вы перешли по правильной ссылке.
+        </div>
+
+        <div id="main-content">
+            <!-- Карточка статистики подписки -->
+            <div class="stats-card" id="stats-card" style="display: none;">
+                <div class="stats-header">
+                    <div class="stats-title">
+                        <span>Подписка:</span>
+                        <span class="user-badge" id="stats-username">-</span>
+                    </div>
+                    <div class="expiry-badge" id="expiry-badge">
+                        <span id="expiry-icon">🛡️</span>
+                        <span id="expiry-text">Загрузка...</span>
+                    </div>
+                </div>
+
+                <div class="traffic-overview">
+                    <!-- Круговой индикатор -->
+                    <div class="circular-chart-container">
+                        <svg viewBox="0 0 100 100" class="circular-chart">
+                            <circle class="circle-bg" cx="50" cy="50" r="45"></circle>
+                            <circle class="circle-bar" id="circle-progress" cx="50" cy="50" r="45"></circle>
+                        </svg>
+                        <div class="chart-center">
+                            <div class="chart-percent" id="chart-percent-text">0%</div>
+                            <div class="chart-label">трафик</div>
+                        </div>
+                    </div>
+
+                    <!-- Цифровые метрики -->
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <div class="metric-label">Израсходовано</div>
+                            <div class="metric-value" id="metric-used">0 ГБ</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Осталось</div>
+                            <div class="metric-value" id="metric-remaining">-</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Лимит</div>
+                            <div class="metric-value" id="metric-total">-</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Сброс трафика</div>
+                            <div class="metric-value" id="metric-reset">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Линейная шкала -->
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar-fill" id="linear-progress-fill"></div>
+                </div>
+
+                <!-- Подвал со статусом обновления -->
+                <div class="stats-footer">
+                    <span id="stats-updated-time">Обновляется раз в час</span>
+                    <button class="refresh-btn" id="btn-refresh-stats" onclick="manualRefreshStats()" title="Обновить статистику">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6M1 20v-6h6"></path>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        <span>Обновить</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Блок ссылки на подписку -->
+            <div class="link-box">
+                <input type="text" id="sub-url" readonly value="Загрузка..." onclick="this.select()" title="Ссылка на подписку">
+                <button class="copy-btn" onclick="copyLink()" id="copy-btn">Копировать</button>
+            </div>
+
+            <!-- Установка в приложения -->
+            <h2>Установка в один клик</h2>
+            <div class="app-grid">
+                <!-- Throne -->
+                <div class="app-item">
+                    <button class="app-action-btn" onclick="copyForThrone()">
+                        <span class="app-icon">👑</span>
+                        <span class="app-name">Throne (скопировать для ПК)</span>
+                        <span class="platform">PC</span>
+                    </button>
+                    <div class="store-links">
+                        <a href="https://github.com/throneproj/throne/releases" target="_blank" class="store-btn">GitHub (Releases)</a>
+                    </div>
+                </div>
+                
+                <!-- Hiddify -->
+                <div class="app-item">
+                    <a href="#" class="app-btn" id="btn-hiddify">
+                        <span class="app-icon">⚡</span>
+                        <span class="app-name">Hiddify</span>
+                        <span class="platform">Mobile / PC</span>
+                    </a>
+                    <div class="store-links">
+                        <a href="https://play.google.com/store/apps/details?id=app.hiddify.com" target="_blank" class="store-btn">Google Play</a>
+                        <a href="https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532" target="_blank" class="store-btn">App Store</a>
+                    </div>
+                </div>
+
+                <!-- Incy -->
+                <div class="app-item">
+                    <a href="#" class="app-btn" id="btn-incy">
+                        <span class="app-icon">🛡️</span>
+                        <span class="app-name">Incy</span>
+                        <span class="platform">Mobile</span>
+                    </a>
+                    <div class="store-links">
+                        <a href="https://play.google.com/store/apps/details?id=llc.itdev.incy&hl=ru" target="_blank" class="store-btn">Google Play</a>
+                        <a href="https://apps.apple.com/app/incy/id6756943388" target="_blank" class="store-btn">App Store</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Сервис и поддержка -->
+            <div class="service-actions-section">
+                <h2>Сервис и поддержка</h2>
+                <div class="actions-grid">
+                    <!-- Кнопка покупки/продления -->
+                    <a href="https://t.me/podnyatie_vpn_bot" target="_blank" class="action-card buy-card">
+                        <div class="action-icon-box buy-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="5" width="20" height="14" rx="3" ry="3"></rect>
+                                <line x1="2" y1="10" x2="22" y2="10"></line>
+                            </svg>
+                        </div>
+                        <div class="action-content">
+                            <span class="action-title">Купить / Продлить</span>
+                            <span class="action-subtitle">@podnyatie_vpn_bot</span>
+                        </div>
+                        <div class="action-arrow">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </div>
+                    </a>
+
+                    <!-- Кнопка поддержки -->
+                    <a href="https://t.me/podnyatie_support_bot" target="_blank" class="action-card support-card">
+                        <div class="action-icon-box support-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                            </svg>
+                        </div>
+                        <div class="action-content">
+                            <span class="action-title">Поддержка</span>
+                            <span class="action-subtitle">@podnyatie_support_bot</span>
+                        </div>
+                        <div class="action-arrow">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Для Throne скопируйте ссылку и нажмите Ctrl+V в окне программы.
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let subPath = urlParams.get('url');
+
+        if (!subPath && window.location.pathname.length > 1) {
+            subPath = window.location.pathname;
+        }
+
+        const username = subPath ? subPath.replace(/^\/+/, '').split('/')[0] : '';
+        const CACHE_TTL_MS = 3600 * 1000; // 1 час
+        const CIRCLE_CIRCUMFERENCE = 283; // 2 * pi * 45
+
+        if (subPath && subPath !== "/") {
+            const fullSubUrl = "https://podnyatie.space:2096/sub" + (subPath.startsWith('/') ? subPath : '/' + subPath);
+            
+            document.getElementById('sub-url').value = fullSubUrl;
+            document.getElementById('btn-hiddify').href = "hiddify://import/" + fullSubUrl;
+            document.getElementById('btn-incy').href = "incy://add/" + encodeURIComponent(fullSubUrl);
+
+            // Инициализация загрузки статистики подписки
+            initSubscriptionStats(username);
+        } else {
+            document.getElementById('main-content').style.display = 'none';
+            document.getElementById('error-msg').style.display = 'block';
+        }
+
+        function copyLink() {
+            const input = document.getElementById('sub-url');
+            input.select();
+            input.setSelectionRange(0, 99999);
+            
+            navigator.clipboard.writeText(input.value).then(() => {
+                const btn = document.getElementById('copy-btn');
+                btn.innerText = "Скопировано!";
+                btn.style.backgroundColor = "var(--success)";
+                btn.style.color = "white";
+                setTimeout(() => {
+                    btn.innerText = "Копировать";
+                    btn.style.backgroundColor = "var(--border)";
+                }, 2000);
+            });
+        }
+
+        function copyForThrone() {
+            const url = document.getElementById('sub-url').value;
+            navigator.clipboard.writeText(url).then(() => {
+                alert("Ссылка скопирована! Откройте Throne и нажмите Ctrl+V на главном экране для добавления.");
+            });
+        }
+
+        /* ------------------ СТАТИСТИКА И ОБНОВЛЕНИЕ РАЗ В ЧАС ------------------ */
+
+        function initSubscriptionStats(user) {
+            if (!user) return;
+            const statsCard = document.getElementById('stats-card');
+            statsCard.style.display = 'block';
+            document.getElementById('stats-username').textContent = user;
+
+            const cacheKey = 'vpn_sub_stats_' + user;
+            const cachedRaw = localStorage.getItem(cacheKey);
+
+            if (cachedRaw) {
+                try {
+                    const cached = JSON.parse(cachedRaw);
+                    const age = Date.now() - cached.timestamp;
+                    if (age < CACHE_TTL_MS) {
+                        // Используем кэш, если он моложе 1 часа
+                        renderStats(cached.data);
+                        updateAgeLabel(cached.timestamp);
+                        setupPeriodicRefresh(user);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("Ошибка чтения кэша:", e);
+                }
+            }
+
+            // Если кэша нет или он старше 1 часа — запрашиваем с сервера
+            fetchStats(user);
+            setupPeriodicRefresh(user);
+        }
+
+        function setupPeriodicRefresh(user) {
+            // Регулярное обновление раз в час (3600000 мс)
+            setInterval(() => {
+                fetchStats(user, false);
+            }, CACHE_TTL_MS);
+        }
+
+        async function fetchStats(user, isManual = false) {
+            const refreshBtn = document.getElementById('btn-refresh-stats');
+            if (isManual) refreshBtn.classList.add('spinning');
+
+            try {
+                // Если ручной запрос — добавляем timestamp для обхода браузерного кэша
+                const url = `/api/subscription/${encodeURIComponent(user)}` + (isManual ? `?t=${Date.now()}` : '');
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                // Сохраняем в localStorage на 1 час
+                const cachePayload = {
+                    timestamp: Date.now(),
+                    data: data
+                };
+                localStorage.setItem('vpn_sub_stats_' + user, JSON.stringify(cachePayload));
+
+                renderStats(data);
+                updateAgeLabel(Date.now());
+            } catch (err) {
+                console.error("Не удалось загрузить данные о подписке:", err);
+            } finally {
+                if (isManual) {
+                    setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
+                }
+            }
+        }
+
+        function manualRefreshStats() {
+            if (username) {
+                fetchStats(username, true);
+            }
+        }
+
+        function renderStats(data) {
+            // 1. Статус и срок окончания подписки
+            const expiryBadge = document.getElementById('expiry-badge');
+            const expiryText = document.getElementById('expiry-text');
+            const expiryIcon = document.getElementById('expiry-icon');
+
+            if (!data.enable || data.is_expired) {
+                expiryBadge.className = 'expiry-badge expired';
+                expiryIcon.textContent = '⚠️';
+                expiryText.textContent = data.is_expired ? 'Истекла' : 'Отключена';
+            } else if (data.is_unlimited_expiry) {
+                expiryBadge.className = 'expiry-badge';
+                expiryIcon.textContent = '♾️';
+                expiryText.textContent = 'Бессрочно';
+            } else {
+                const days = data.days_left;
+                if (days !== null && days <= 5) {
+                    expiryBadge.className = 'expiry-badge warning';
+                    expiryIcon.textContent = '⏳';
+                } else {
+                    expiryBadge.className = 'expiry-badge';
+                    expiryIcon.textContent = '🛡️';
+                }
+                const daysStr = days !== null ? ` (ост. ${days} дн.)` : '';
+                expiryText.textContent = `До ${data.expiry_formatted}${daysStr}`;
+            }
+
+            // 2. Метрики трафика
+            document.getElementById('metric-used').textContent = data.used_formatted;
+            document.getElementById('metric-remaining').textContent = data.remaining_formatted;
+            document.getElementById('metric-total').textContent = data.volume_formatted;
+            document.getElementById('metric-reset').textContent = data.next_reset_formatted || '—';
+
+            // 3. Круговой график и прогресс-бар
+            const percent = data.is_unlimited_traffic ? 0 : data.used_percent;
+            const circleBar = document.getElementById('circle-progress');
+            const linearBar = document.getElementById('linear-progress-fill');
+            const percentText = document.getElementById('chart-percent-text');
+
+            if (data.is_unlimited_traffic) {
+                percentText.textContent = '∞';
+                circleBar.style.stroke = 'url(#gradient-normal)';
+                circleBar.style.strokeDashoffset = 0;
+                linearBar.style.width = '100%';
+                linearBar.style.background = 'var(--accent)';
+            } else {
+                percentText.textContent = `${Math.round(percent)}%`;
+
+                // Выбор цвета в зависимости от порога
+                let gradientUrl = 'url(#gradient-normal)';
+                let barColor = 'linear-gradient(90deg, #6366f1, #10b981)';
+
+                if (percent >= 90) {
+                    gradientUrl = 'url(#gradient-danger)';
+                    barColor = 'linear-gradient(90deg, #f59e0b, #ef4444)';
+                } else if (percent >= 70) {
+                    gradientUrl = 'url(#gradient-warning)';
+                    barColor = 'linear-gradient(90deg, #6366f1, #f59e0b)';
+                }
+
+                circleBar.style.stroke = gradientUrl;
+                linearBar.style.background = barColor;
+
+                // Расчет смещения дуги окружности
+                const offset = CIRCLE_CIRCUMFERENCE - (CIRCLE_CIRCUMFERENCE * (percent / 100));
+                circleBar.style.strokeDashoffset = offset;
+                linearBar.style.width = `${percent}%`;
+            }
+        }
+
+        function updateAgeLabel(timestamp) {
+            const label = document.getElementById('stats-updated-time');
+            const minsAgo = Math.floor((Date.now() - timestamp) / 60000);
+            if (minsAgo < 1) {
+                label.textContent = 'Обновлено только что';
+            } else if (minsAgo < 60) {
+                label.textContent = `Обновлено ${minsAgo} мин. назад`;
+            } else {
+                label.textContent = 'Обновляется раз в час';
+            }
+        }
+    </script>
+</body>
+</html>

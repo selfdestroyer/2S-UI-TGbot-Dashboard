@@ -1,0 +1,14 @@
+[Unit]
+Description=VPN Dashboard Validation Microservice
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/var/www/vpn-service
+EnvironmentFile=-/var/www/vpn-service/.env
+ExecStart=/var/www/vpn-service/venv/bin/uvicorn app:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

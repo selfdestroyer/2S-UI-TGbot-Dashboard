@@ -1,0 +1,33 @@
+# Переменные окружения и секреты
+.env
+.env.*
+!.env.example
+*.save
+deploy.sh
+
+# Python
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Базы данных SQLite
+*.db
+*.sqlite
+*.sqlite3
+bot_data.db
+
+# Операционная система и IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Логи
+*.log
+logs/
