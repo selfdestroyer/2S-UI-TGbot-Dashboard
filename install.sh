@@ -71,7 +71,7 @@ show_help() {
     echo "  --project <name>         Название проекта (по умолчанию: 'My VPN Service')"
     echo "  --support <username>     Юзернейм саппорта Telegram (без @)"
     echo "  --db <path>              Путь к SQLite базе данных (по умолчанию: /usr/local/s-ui/db/s-ui.db)"
-    echo "  --panel-port <port>      Порт панели 2S-UI/X-UI (по умолчанию: 2096)"
+    echo "  --panel-port <port>      Порт панели 2S-UI/S-UI (по умолчанию: 2096)"
     echo "  --no-ssl                 Пропустить получение SSL Let's Encrypt"
     echo "  --ssl-email <email>      Email для регистрации SSL Let's Encrypt"
     echo "  -y, --non-interactive    Неинтерактивный режим"
@@ -151,21 +151,29 @@ run_wizard() {
         MAIN_DOMAIN="$(echo "$input_main" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
         if [ -z "$MAIN_DOMAIN" ]; then
             log_warning "Основной домен не может быть пустым!"
+        elif [[ "$MAIN_DOMAIN" =~ [а-яА-ЯёЁ] ]]; then
+            log_warning "В домене обнаружены русские буквы: '$MAIN_DOMAIN'. Проверьте раскладку клавиатуры!"
+            MAIN_DOMAIN=""
         fi
     done
 
     # 2. Поддомен для веб-дашборда и Telegram-бота
-    if [ -z "$SUB_DOMAIN" ]; then
+    while [ -z "$SUB_DOMAIN" ]; do
         default_sub="sub.${MAIN_DOMAIN}"
         echo -e "\n${YELLOW}2. Поддомен для веб-дашборда (на него бот выдает ссылки пользователям):${NC}"
         echo -e "   (A-запись этого поддомена должна указывать на IP этого сервера)"
         read -r -p "Поддомен [$default_sub]: " input_sub
         if [ -n "$input_sub" ]; then
-            SUB_DOMAIN="$(echo "$input_sub" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
+            sub_cand="$(echo "$input_sub" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
+            if [[ "$sub_cand" =~ [а-яА-ЯёЁ] ]]; then
+                log_warning "В поддомене обнаружены русские буквы: '$sub_cand'. Проверьте раскладку клавиатуры!"
+            else
+                SUB_DOMAIN="$sub_cand"
+            fi
         else
             SUB_DOMAIN="$default_sub"
         fi
-    fi
+    done
     SUB_DOMAIN="$(echo "$SUB_DOMAIN" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
 
     read -r -p "Порт панели 2S-UI для выдачи подписок [$PANEL_PORT]: " input_panel_port
@@ -195,7 +203,7 @@ run_wizard() {
     read -r -p "Ссылка на инфо-канал [$SERVICE_GROUP_URL]: " input_chan_url
     [ -n "$input_chan_url" ] && SERVICE_GROUP_URL="$input_chan_url"
 
-    echo -e "\n${YELLOW}Путь к SQLite базе данных панели 2S-UI / X-UI:${NC}"
+    echo -e "\n${YELLOW}Путь к SQLite базе данных панели 2S-UI / S-UI:${NC}"
     read -r -p "DB_PATH [$DB_PATH]: " input_db
     [ -n "$input_db" ] && DB_PATH="$input_db"
 

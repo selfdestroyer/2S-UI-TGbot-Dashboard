@@ -3,7 +3,7 @@
 > **Проект:** 2S-UI-TGbot-Dashboard  
 > **Репозиторий:** [github.com/selfdestroyer/2S-UI-TGbot-Dashboard](https://github.com/selfdestroyer/2S-UI-TGbot-Dashboard)  
 > **Версия:** 2.1.0  
-> **Стек:** Python 3.10+, Aiogram 3.x, FastAPI, Uvicorn, SQLite3, Nginx, Certbot SSL, Systemd, 2S-UI / S-UI / X-UI  
+> **Стек:** Python 3.10+, Aiogram 3.x, FastAPI, Uvicorn, SQLite3, Nginx, Certbot SSL, Systemd, 2S-UI / S-UI  
 > **Лицензия:** MIT  
 
 ---
@@ -102,7 +102,7 @@
 | :--- | :--- | :--- |
 | `BOT_TOKEN` | `1234567890:ABCdef...` | Токен Telegram-бота от `@BotFather` |
 | `ADMIN_TG_ID` | `123456789` | Цифровой Telegram ID администратора |
-| `DB_PATH` | `/usr/local/s-ui/db/s-ui.db` | Путь к SQLite базе данных панели 2S-UI / X-UI |
+| `DB_PATH` | `/usr/local/s-ui/db/s-ui.db` | Путь к SQLite базе данных панели 2S-UI / S-UI |
 | `BOT_DATA_DB` | `bot_data.db` | База данных служебных таблиц бота (уведомления, рассылки) |
 | `PROJECT_NAME` | `My VPN Service` | Название сервиса в боте и веб-интерфейсе |
 | `MAIN_DOMAIN` | `example.com` | Основной домен сервера с панелью 2S-UI |
