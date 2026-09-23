@@ -60,6 +60,42 @@ SETUP_SSL="y"
 SSL_EMAIL=""
 NON_INTERACTIVE=false
 
+# Загрузка существующей конфигурации (при повторной установке)
+load_existing_env() {
+    local env_file=""
+    if [ -f "${INSTALL_DIR}/.env" ]; then
+        env_file="${INSTALL_DIR}/.env"
+    elif [ -f "/root/vpn-bot.env.bak" ]; then
+        env_file="/root/vpn-bot.env.bak"
+    elif [ -f "${SCRIPT_DIR}/.env" ]; then
+        env_file="${SCRIPT_DIR}/.env"
+    fi
+
+    if [ -n "$env_file" ]; then
+        while IFS='=' read -r key val || [ -n "$key" ]; do
+            key=$(echo "$key" | xargs 2>/dev/null || true)
+            [[ "$key" =~ ^#.*$ ]] && continue
+            [ -z "$key" ] && continue
+            val=$(echo "$val" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+            case "$key" in
+                MAIN_DOMAIN) [ -n "$val" ] && MAIN_DOMAIN="$val" ;;
+                SUB_DOMAIN) [ -n "$val" ] && SUB_DOMAIN="$val" ;;
+                PROJECT_NAME) [ -n "$val" ] && PROJECT_NAME="$val" ;;
+                BOT_TOKEN) [ -n "$val" ] && BOT_TOKEN="$val" ;;
+                ADMIN_TG_ID) [ -n "$val" ] && ADMIN_TG_ID="$val" ;;
+                SUPPORT_BOT_USERNAME) [ -n "$val" ] && SUPPORT_BOT_USERNAME="$val" ;;
+                SERVICE_GROUP_NAME) [ -n "$val" ] && SERVICE_GROUP_NAME="$val" ;;
+                SERVICE_GROUP_URL) [ -n "$val" ] && SERVICE_GROUP_URL="$val" ;;
+                PAYMENT_REQUISITES) [ -n "$val" ] && PAYMENT_REQUISITES="$val" ;;
+                DB_PATH) [ -n "$val" ] && DB_PATH="$val" ;;
+                PANEL_PORT) [ -n "$val" ] && PANEL_PORT="$val" ;;
+            esac
+        done < "$env_file"
+    fi
+}
+
+load_existing_env
+
 show_help() {
     echo "Использование: sudo bash install.sh [ОПЦИИ]"
     echo ""
@@ -141,40 +177,58 @@ run_wizard() {
         return
     fi
 
-    echo -e "${BOLD}📋 Мастер первоначальной настройки${NC}\n"
+    echo -e "${BOLD}📋 Мастер настройки конфигурации${NC}\n"
 
     # 1. Основной домен сервера с панелью 2S-UI
-    while [ -z "$MAIN_DOMAIN" ]; do
-        echo -e "${YELLOW}1. Основной домен сервера, на котором работает панель 2S-UI:${NC}"
-        echo -e "   (На этот домен направлены прямые ссылки на подписки панели: https://домен:${PANEL_PORT}/sub/...)"
-        read -r -p "Основной домен [например example.com]: " input_main
-        MAIN_DOMAIN="$(echo "$input_main" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
-        if [ -z "$MAIN_DOMAIN" ]; then
-            log_warning "Основной домен не может быть пустым!"
-        elif [[ "$MAIN_DOMAIN" =~ [а-яА-ЯёЁ] ]]; then
-            log_warning "В домене обнаружены русские буквы: '$MAIN_DOMAIN'. Проверьте раскладку клавиатуры!"
-            MAIN_DOMAIN=""
+    while true; do
+        if [ -n "$MAIN_DOMAIN" ]; then
+            echo -e "${YELLOW}1. Основной домен сервера, на котором работает панель 2S-UI:${NC}"
+            echo -e "   (На этот домен направлены прямые ссылки на подписки панели: https://домен:${PANEL_PORT}/sub/...)"
+            read -r -p "Основной домен [$MAIN_DOMAIN]: " input_main
+            if [ -n "$input_main" ]; then
+                cand="$(echo "$input_main" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
+                if [[ "$cand" =~ [а-яА-ЯёЁ] ]]; then
+                    log_warning "В домене обнаружены русские буквы: '$cand'. Проверьте раскладку клавиатуры!"
+                    continue
+                fi
+                MAIN_DOMAIN="$cand"
+            fi
+            break
+        else
+            echo -e "${YELLOW}1. Основной домен сервера, на котором работает панель 2S-UI:${NC}"
+            echo -e "   (На этот домен направлены прямые ссылки на подписки панели: https://домен:${PANEL_PORT}/sub/...)"
+            read -r -p "Основной домен [например example.com]: " input_main
+            cand="$(echo "$input_main" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
+            if [ -z "$cand" ]; then
+                log_warning "Основной домен не может быть пустым!"
+                continue
+            elif [[ "$cand" =~ [а-яА-ЯёЁ] ]]; then
+                log_warning "В домене обнаружены русские буквы: '$cand'. Проверьте раскладку клавиатуры!"
+                continue
+            fi
+            MAIN_DOMAIN="$cand"
+            break
         fi
     done
 
     # 2. Поддомен для веб-дашборда и Telegram-бота
-    while [ -z "$SUB_DOMAIN" ]; do
-        default_sub="sub.${MAIN_DOMAIN}"
+    while true; do
+        default_sub="${SUB_DOMAIN:-sub.${MAIN_DOMAIN}}"
         echo -e "\n${YELLOW}2. Поддомен для веб-дашборда (на него бот выдает ссылки пользователям):${NC}"
         echo -e "   (A-запись этого поддомена должна указывать на IP этого сервера)"
         read -r -p "Поддомен [$default_sub]: " input_sub
         if [ -n "$input_sub" ]; then
-            sub_cand="$(echo "$input_sub" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
-            if [[ "$sub_cand" =~ [а-яА-ЯёЁ] ]]; then
-                log_warning "В поддомене обнаружены русские буквы: '$sub_cand'. Проверьте раскладку клавиатуры!"
-            else
-                SUB_DOMAIN="$sub_cand"
+            cand="$(echo "$input_sub" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
+            if [[ "$cand" =~ [а-яА-ЯёЁ] ]]; then
+                log_warning "В поддомене обнаружены русские буквы: '$cand'. Проверьте раскладку клавиатуры!"
+                continue
             fi
+            SUB_DOMAIN="$cand"
         else
             SUB_DOMAIN="$default_sub"
         fi
+        break
     done
-    SUB_DOMAIN="$(echo "$SUB_DOMAIN" | sed -E 's~^https?://~~' | sed -E 's~/+$~~' | xargs)"
 
     read -r -p "Порт панели 2S-UI для выдачи подписок [$PANEL_PORT]: " input_panel_port
     [ -n "$input_panel_port" ] && PANEL_PORT="$input_panel_port"
@@ -182,17 +236,29 @@ run_wizard() {
     read -r -p "Название VPN сервиса [$PROJECT_NAME]: " input_project
     [ -n "$input_project" ] && PROJECT_NAME="$input_project"
 
-    while [ -z "$BOT_TOKEN" ]; do
-        echo -e "\n${YELLOW}Введите Telegram Bot Token (от @BotFather):${NC}"
-        read -r -p "BOT_TOKEN: " input_token
-        BOT_TOKEN="$(echo "$input_token" | xargs)"
-    done
+    if [ -n "$BOT_TOKEN" ]; then
+        echo -e "\n${YELLOW}Telegram Bot Token (от @BotFather):${NC}"
+        read -r -p "BOT_TOKEN [Enter чтобы оставить сохраненный]: " input_token
+        [ -n "$input_token" ] && BOT_TOKEN="$(echo "$input_token" | xargs)"
+    else
+        while [ -z "$BOT_TOKEN" ]; do
+            echo -e "\n${YELLOW}Введите Telegram Bot Token (от @BotFather):${NC}"
+            read -r -p "BOT_TOKEN: " input_token
+            BOT_TOKEN="$(echo "$input_token" | xargs)"
+        done
+    fi
 
-    while [ -z "$ADMIN_TG_ID" ]; do
-        echo -e "\n${YELLOW}Введите ваш цифровой Telegram ID (от @userinfobot):${NC}"
-        read -r -p "ADMIN_TG_ID: " input_admin
-        ADMIN_TG_ID="$(echo "$input_admin" | tr -cd '0-9')"
-    done
+    if [ -n "$ADMIN_TG_ID" ]; then
+        echo -e "\n${YELLOW}Цифровой Telegram ID администратора (от @userinfobot):${NC}"
+        read -r -p "ADMIN_TG_ID [$ADMIN_TG_ID]: " input_admin
+        [ -n "$input_admin" ] && ADMIN_TG_ID="$(echo "$input_admin" | tr -cd '0-9')"
+    else
+        while [ -z "$ADMIN_TG_ID" ]; do
+            echo -e "\n${YELLOW}Введите ваш цифровой Telegram ID (от @userinfobot):${NC}"
+            read -r -p "ADMIN_TG_ID: " input_admin
+            ADMIN_TG_ID="$(echo "$input_admin" | tr -cd '0-9')"
+        done
+    fi
 
     read -r -p "Юзернейм саппорта в Telegram без @ [$SUPPORT_BOT_USERNAME]: " input_support
     [ -n "$input_support" ] && SUPPORT_BOT_USERNAME="${input_support#@}"
@@ -212,14 +278,21 @@ run_wizard() {
         log_warning "Сервисы будут настроены, но для их работы потребуется наличие этой БД."
     fi
 
-    echo -e "\n${YELLOW}Настроить бесплатный SSL Let's Encrypt через Certbot?${NC}"
-    read -r -p "[Y/n]: " input_ssl
-    if [[ "$input_ssl" =~ ^[Nn]$ ]]; then
-        SETUP_SSL="n"
+    # Проверка наличия SSL сертификата для поддомена
+    if [ -f "/etc/letsencrypt/live/${SUB_DOMAIN}/fullchain.pem" ]; then
+        echo -e "\n${GREEN}[SSL] Обнаружен действующий SSL-сертификат Let's Encrypt для ${SUB_DOMAIN}.${NC}"
+        echo -e "      HTTPS будет активирован автоматически."
+        SETUP_SSL="existing"
     else
-        SETUP_SSL="y"
-        read -r -p "Email для уведомлений Let's Encrypt (можно оставить пустым): " input_email
-        SSL_EMAIL="$input_email"
+        echo -e "\n${YELLOW}Настроить бесплатный SSL Let's Encrypt через Certbot?${NC}"
+        read -r -p "[Y/n]: " input_ssl
+        if [[ "$input_ssl" =~ ^[Nn]$ ]]; then
+            SETUP_SSL="n"
+        else
+            SETUP_SSL="y"
+            read -r -p "Email для уведомлений Let's Encrypt (можно оставить пустым): " input_email
+            SSL_EMAIL="$input_email"
+        fi
     fi
 
     echo ""
@@ -232,7 +305,7 @@ run_wizard() {
     echo "  Admin ID:                       $ADMIN_TG_ID"
     echo "  Саппорт:                        @$SUPPORT_BOT_USERNAME"
     echo "  База 2S-UI:                     $DB_PATH"
-    echo "  Настройка SSL:                  $SETUP_SSL"
+    echo "  Режим SSL:                      $SETUP_SSL"
     echo -e "${CYAN}------------------------------------------------------------------${NC}"
     read -r -p "Начать установку? [Y/n]: " proceed
     if [[ "$proceed" =~ ^[Nn]$ ]]; then
@@ -265,6 +338,14 @@ deploy_project_files() {
     mkdir -p "${INSTALL_DIR}"
     rsync -av --exclude 'venv' --exclude '__pycache__' --exclude '.env' --exclude '*.db' --exclude '.git' \
         "${SCRIPT_DIR}/" "${INSTALL_DIR}/"
+
+    # Восстановление базы данных бота из резервной копии, если локальной базы еще нет
+    if [ ! -f "${INSTALL_DIR}/bot_data.db" ]; then
+        if [ -f "/root/bot_data.db.bak" ]; then
+            log_info "Восстановление служебной БД бота из резервной копии /root/bot_data.db.bak..."
+            cp -a "/root/bot_data.db.bak" "${INSTALL_DIR}/bot_data.db"
+        fi
+    fi
 
     # Кастомизация фронтенда
     if [ -f "${INSTALL_DIR}/index.html" ]; then
@@ -319,12 +400,7 @@ EOF
     log_success "Файлы и службы успешно подготовлены."
 }
 
-setup_nginx_and_ssl() {
-    log_info "Настройка веб-сервера Nginx..."
-
-    mkdir -p "${CERTBOT_DIR}"
-    NGINX_CONF="/etc/nginx/sites-available/vpn-sub.conf"
-
+configure_nginx_http() {
     cat > "$NGINX_CONF" <<EOF
 server {
     listen 80;
@@ -354,47 +430,127 @@ server {
     }
 }
 EOF
+}
 
-    ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/vpn-sub.conf
+configure_nginx_ssl() {
+    cat > "$NGINX_CONF" <<EOF
+# Перенаправление HTTP -> HTTPS
+server {
+    listen 80;
+    server_name ${SUB_DOMAIN};
 
-    if [ -L /etc/nginx/sites-enabled/default ]; then
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_DIR};
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+# Защищенный веб-дашборд и подписки (HTTPS)
+server {
+    listen 443 ssl;
+    server_name ${SUB_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${SUB_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${SUB_DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_DIR};
+    }
+
+    # Веб-дашборд и валидация
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Проксирование запросов к панели 2S-UI
+    location /sub/ {
+        proxy_pass https://127.0.0.1:${PANEL_PORT}/;
+        proxy_ssl_verify off;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+}
+
+setup_nginx_and_ssl() {
+    log_info "Настройка веб-сервера Nginx..."
+
+    mkdir -p "${CERTBOT_DIR}"
+    chmod 755 "${CERTBOT_DIR}" 2>/dev/null || true
+    NGINX_CONF="/etc/nginx/sites-available/vpn-sub.conf"
+
+    # Удаляем дефолтный сайт Nginx, если он активен
+    if [ -L /etc/nginx/sites-enabled/default ] || [ -f /etc/nginx/sites-enabled/default ]; then
         rm -f /etc/nginx/sites-enabled/default
     fi
 
-    nginx -t
-    systemctl restart nginx
+    local cert_exists=false
+    if [ -f "/etc/letsencrypt/live/${SUB_DOMAIN}/fullchain.pem" ] && [ -f "/etc/letsencrypt/live/${SUB_DOMAIN}/privkey.pem" ]; then
+        cert_exists=true
+    fi
 
-    if [ "$SETUP_SSL" = "y" ]; then
-        log_info "Получение SSL-сертификата Let's Encrypt для ${SUB_DOMAIN}..."
-        
-        CERTBOT_EMAIL_CMD="--register-unsafely-without-email"
-        if [ -n "$SSL_EMAIL" ]; then
-            CERTBOT_EMAIL_CMD="-m ${SSL_EMAIL}"
-        fi
+    if [ "$cert_exists" = true ]; then
+        log_info "Обнаружен действующий SSL-сертификат Let's Encrypt для ${SUB_DOMAIN}. Настройка HTTPS..."
+        configure_nginx_ssl
+        ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/vpn-sub.conf
+        nginx -t
+        systemctl restart nginx
+        log_success "Nginx настроен с поддержкой HTTPS (SSL активен)."
+    else
+        log_info "Создание начальной конфигурации Nginx (HTTP)..."
+        configure_nginx_http
+        ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/vpn-sub.conf
+        nginx -t
+        systemctl restart nginx
 
-        set +e
-        certbot --nginx -d "${SUB_DOMAIN}" --non-interactive --agree-tos ${CERTBOT_EMAIL_CMD} --redirect
-        CERTBOT_RES=$?
-        set -e
+        if [ "$SETUP_SSL" = "y" ]; then
+            log_info "Получение SSL-сертификата Let's Encrypt для ${SUB_DOMAIN}..."
+            CERTBOT_EMAIL_CMD="--register-unsafely-without-email"
+            if [ -n "$SSL_EMAIL" ]; then
+                CERTBOT_EMAIL_CMD="-m ${SSL_EMAIL}"
+            fi
 
-        if [ $CERTBOT_RES -eq 0 ]; then
-            log_success "SSL Let's Encrypt успешно получен и применен!"
-            systemctl reload nginx
+            set +e
+            certbot --nginx -d "${SUB_DOMAIN}" --non-interactive --agree-tos ${CERTBOT_EMAIL_CMD} --redirect
+            CERTBOT_RES=$?
+            set -e
+
+            if [ -f "/etc/letsencrypt/live/${SUB_DOMAIN}/fullchain.pem" ]; then
+                log_info "Применение эталонной SSL-конфигурации Nginx..."
+                configure_nginx_ssl
+                nginx -t
+                systemctl reload nginx
+                log_success "SSL Let's Encrypt успешно получен и применен! HTTPS активен."
+            else
+                log_warning "Не удалось получить SSL (возможно DNS домена еще не обновился)."
+                log_warning "Сайт пока доступен по обычному HTTP (порт 80)."
+                echo -e "${CYAN}Для получения сертификата позже запустите:${NC}"
+                echo -e "  sudo certbot --nginx -d ${SUB_DOMAIN} && sudo bash ${INSTALL_DIR}/update.sh\n"
+            fi
         else
-            log_warning "Не удалось получить SSL (возможно DNS домена еще не обновился)."
-            log_warning "Сайт пока доступен по обычному HTTP (порт 80)."
-            echo -e "${CYAN}Для получения сертификата позже запустите:${NC}"
-            echo -e "  sudo certbot --nginx -d ${SUB_DOMAIN}\n"
+            log_info "SSL пропущен. Сайт настроен на HTTP (порт 80)."
         fi
     fi
 }
 
 start_and_verify_services() {
-    log_info "Запуск служб systemd..."
+    log_info "Запуск служб в systemd..."
 
     systemctl daemon-reload
-    systemctl enable vpn-bot vpn-dashboard
-    systemctl restart vpn-bot vpn-dashboard
+    systemctl enable vpn-bot vpn-dashboard nginx
+    systemctl restart vpn-bot vpn-dashboard nginx
 
     sleep 2
 
@@ -406,28 +562,45 @@ start_and_verify_services() {
     echo -e "${BOLD}🔍 Результаты проверки служб:${NC}"
 
     if [ "$BOT_ACTIVE" = "active" ]; then
-        echo -e "  [✅] vpn-bot:             ${GREEN}РАБОТАЕТ (Active)${NC}"
+        echo -e "  [✅] vpn-bot (Telegram-бот):       ${GREEN}РАБОТАЕТ (Active)${NC}"
     else
-        echo -e "  [❌] vpn-bot:             ${RED}ОШИБКА ($BOT_ACTIVE)${NC}"
+        echo -e "  [❌] vpn-bot (Telegram-бот):       ${RED}ОШИБКА ($BOT_ACTIVE)${NC}"
         echo "       Логи: journalctl -u vpn-bot -n 30 --no-pager"
     fi
 
     if [ "$DASHBOARD_ACTIVE" = "active" ]; then
-        echo -e "  [✅] vpn-dashboard:       ${GREEN}РАБОТАЕТ (Active)${NC}"
+        echo -e "  [✅] vpn-dashboard (FastAPI):       ${GREEN}РАБОТАЕТ (Active)${NC}"
     else
-        echo -e "  [❌] vpn-dashboard:       ${RED}ОШИБКА ($DASHBOARD_ACTIVE)${NC}"
+        echo -e "  [❌] vpn-dashboard (FastAPI):       ${RED}ОШИБКА ($DASHBOARD_ACTIVE)${NC}"
         echo "       Логи: journalctl -u vpn-dashboard -n 30 --no-pager"
     fi
 
     if [ "$NGINX_ACTIVE" = "active" ]; then
-        echo -e "  [✅] Nginx:               ${GREEN}РАБОТАЕТ (Active)${NC}"
+        echo -e "  [✅] Nginx (Веб-сервер):            ${GREEN}РАБОТАЕТ (Active)${NC}"
     else
-        echo -e "  [❌] Nginx:               ${RED}ОШИБКА ($NGINX_ACTIVE)${NC}"
+        echo -e "  [❌] Nginx (Веб-сервер):            ${RED}ОШИБКА ($NGINX_ACTIVE)${NC}"
     fi
 
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/ || true)
     if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "404" ]; then
-        echo -e "  [✅] FastAPI API:         ${GREEN}ОТВЕЧАЕТ (HTTP $HTTP_CODE)${NC}"
+        echo -e "  [✅] Внутренний API бэкенда:        ${GREEN}ОТВЕЧАЕТ (HTTP $HTTP_CODE)${NC}"
+    fi
+
+    PROTOCOL="http"
+    if [ -f "/etc/letsencrypt/live/${SUB_DOMAIN}/fullchain.pem" ]; then
+        PROTOCOL="https"
+    fi
+
+    PUB_CODE=$(curl -s -k -o /dev/null -w "%{http_code}" "${PROTOCOL}://${SUB_DOMAIN}/" || true)
+    if [ "$PUB_CODE" = "200" ] || [ "$PUB_CODE" = "301" ] || [ "$PUB_CODE" = "302" ]; then
+        echo -e "  [✅] Публичный веб-сайт дашборда:   ${GREEN}ДОСТУПЕН (${PROTOCOL}://${SUB_DOMAIN}/, HTTP $PUB_CODE)${NC}"
+    else
+        echo -e "  [⚠️] Публичный веб-сайт дашборда:   ${YELLOW}Ответ HTTP $PUB_CODE на ${PROTOCOL}://${SUB_DOMAIN}/${NC}"
+    fi
+
+    if [ "$BOT_ACTIVE" = "active" ] && [ "$DASHBOARD_ACTIVE" = "active" ] && [ "$NGINX_ACTIVE" = "active" ]; then
+        echo ""
+        log_success "Все сервисы (бот и сайт) успешно запущены и добавлены в автозагрузку!"
     fi
 }
 
@@ -442,12 +615,15 @@ print_summary() {
     echo -e "${GREEN}${BOLD}             🎉 УСТАНОВКА УСПЕШНО ЗАВЕРШЕНА!                     ${NC}"
     echo -e "${GREEN}${BOLD}==================================================================${NC}"
     echo ""
+    echo -e "🚀 ${BOLD}Бот и веб-сайт УЖЕ АВТОМАТИЧЕСКИ ЗАПУЩЕНЫ И РАБОТАЮТ!${NC}"
+    echo -e "   Они зарегистрированы в автозагрузке systemd и будут работать непрерывно."
+    echo ""
     echo -e "🌐 ${BOLD}Ссылки сервиса:${NC}"
     echo -e "  • Ссылка от бота (веб-дашборд):     ${CYAN}${PROTOCOL}://${SUB_DOMAIN}/{client_name}${NC}"
     echo -e "  • Ссылка на подписку (из панели):   ${CYAN}https://${MAIN_DOMAIN}:${PANEL_PORT}/sub/{client_name}${NC}"
     echo -e "  • Telegram саппорт:                 ${CYAN}@${SUPPORT_BOT_USERNAME}${NC}"
     echo ""
-    echo -e "🛠 ${BOLD}Управление сервисами:${NC}"
+    echo -e "🛠 ${BOLD}Управление сервисами (вручную запускать ничего не требуется):${NC}"
     echo -e "  • Статус бота:              ${YELLOW}systemctl status vpn-bot${NC}"
     echo -e "  • Статус дашборда:          ${YELLOW}systemctl status vpn-dashboard${NC}"
     echo -e "  • Логи бота в реал-тайме:   ${YELLOW}journalctl -u vpn-bot -f${NC}"
@@ -455,7 +631,7 @@ print_summary() {
     echo -e "  • Файл конфигурации:        ${YELLOW}nano ${INSTALL_DIR}/.env${NC}"
     echo ""
     echo -e "🔄 ${BOLD}Обновление из репозитория:${NC}"
-    echo -e "  ${YELLOW}sudo bash ${SCRIPT_DIR}/update.sh${NC}"
+    echo -e "  ${YELLOW}sudo bash ${INSTALL_DIR}/update.sh${NC}"
     echo ""
     echo -e "${GREEN}==================================================================${NC}\n"
 }
