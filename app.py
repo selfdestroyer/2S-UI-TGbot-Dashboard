@@ -11,7 +11,7 @@ app = FastAPI(title="VPN Dashboard API")
 DB_PATH = os.getenv("DB_PATH", "/usr/local/s-ui/db/s-ui.db")
 
 LOCAL_HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
-DEFAULT_HTML_PATH = "/var/www/2S-UI-tgbot-dashboard/index.html"
+DEFAULT_HTML_PATH = "/var/www/2S-UI-TGbot-Dashboard/index.html"
 
 def get_html_content() -> str:
     """Читает актуальный index.html с диска (локального или серверного)."""

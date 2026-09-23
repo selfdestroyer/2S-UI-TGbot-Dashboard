@@ -19,9 +19,9 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_DIR="/var/www/2S-UI-tgbot-dashboard"
+INSTALL_DIR="/var/www/2S-UI-TGbot-Dashboard"
 
-echo -e "${CYAN}${BOLD}==> Запуск обновления 2S-UI-tgbot-dashboard...${NC}"
+echo -e "${CYAN}${BOLD}==> Запуск обновления 2S-UI-TGbot-Dashboard...${NC}"
 
 # Если репозиторий Git, получаем последние изменения
 if [ -d "${SCRIPT_DIR}/.git" ]; then

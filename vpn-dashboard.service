@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 User=root
-WorkingDirectory=/var/www/2S-UI-tgbot-dashboard
-EnvironmentFile=-/var/www/2S-UI-tgbot-dashboard/.env
-ExecStart=/var/www/2S-UI-tgbot-dashboard/venv/bin/uvicorn app:app --host 127.0.0.1 --port 8000
+WorkingDirectory=/var/www/2S-UI-TGbot-Dashboard
+EnvironmentFile=-/var/www/2S-UI-TGbot-Dashboard/.env
+ExecStart=/var/www/2S-UI-TGbot-Dashboard/venv/bin/uvicorn app:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
 

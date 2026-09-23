@@ -34,14 +34,14 @@ print_banner() {
     clear 2>/dev/null || true
     echo -e "${CYAN}${BOLD}"
     echo "=================================================================="
-    echo "      🚀 УСТАНОВЩИК 2S-UI-tgbot-dashboard                       "
+    echo "      🚀 УСТАНОВЩИК 2S-UI-TGbot-Dashboard                       "
     echo "      Telegram Bot (Aiogram 3) & Web Dashboard (FastAPI)         "
     echo "=================================================================="
     echo -e "${NC}"
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_DIR="/var/www/2S-UI-tgbot-dashboard"
+INSTALL_DIR="/var/www/2S-UI-TGbot-Dashboard"
 CERTBOT_DIR="/var/www/certbot"
 
 # Значения по умолчанию

@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 User=root
-WorkingDirectory=/var/www/2S-UI-tgbot-dashboard
-EnvironmentFile=-/var/www/2S-UI-tgbot-dashboard/.env
-ExecStart=/var/www/2S-UI-tgbot-dashboard/venv/bin/python bot.py
+WorkingDirectory=/var/www/2S-UI-TGbot-Dashboard
+EnvironmentFile=-/var/www/2S-UI-TGbot-Dashboard/.env
+ExecStart=/var/www/2S-UI-TGbot-Dashboard/venv/bin/python bot.py
 Restart=always
 RestartSec=5
 
