@@ -1,4 +1,4 @@
-# 🚀 VPN Suite: Telegram Bot & Web Dashboard (Единая директория)
+# 🚀 2S-UI-tgbot-dashboard: Telegram Bot & Web Dashboard (для панели 2S-UI)
 
 [![OS](https://img.shields.io/badge/OS-Ubuntu%20%7C%20Debian-orange.svg)](https://ubuntu.com/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
@@ -77,14 +77,14 @@
 Клонируйте репозиторий и запустите установщик:
 
 ```bash
-git clone https://github.com/ВАШ_АККАУНТ/vpn-service.git /root/vpn-service
-cd /root/vpn-service
+git clone https://github.com/ВАШ_АККАУНТ/2S-UI-tgbot-dashboard.git /root/2S-UI-tgbot-dashboard
+cd /root/2S-UI-tgbot-dashboard
 sudo bash install.sh
 ```
 
-Скрипт запросит основные параметры (домен, токен бота, ID админа, контакты поддержки) и выполнит полную установку «под ключ»:
+Скрипт запросит основные параметры (домен панели, поддомен дашборда, токен бота, ID админа) и выполнит полную установку «под ключ»:
 1. Установит необходимые пакеты системы (`nginx`, `python3-venv`, `certbot` и др.).
-2. Развернет файлы проекта в `/var/www/vpn-service`.
+2. Развернет файлы проекта в `/var/www/2S-UI-tgbot-dashboard`.
 3. Создаст общее виртуальное окружение `venv` и установит `requirements.txt`.
 4. Сгенерирует `.env` с безопасными правами доступа (`600`).
 5. Настроит виртуальный хост Nginx и выпустит бесплатный SSL-сертификат Let's Encrypt.
@@ -95,7 +95,7 @@ sudo bash install.sh
 ## 📁 Структура проекта
 
 ```text
-vpn-service/
+2S-UI-tgbot-dashboard/
 ├── bot.py                   # Telegram-бот (Aiogram 3)
 ├── app.py                   # Веб-сервер / API валидации (FastAPI)
 ├── index.html               # Веб-интерфейс подписок
@@ -115,7 +115,7 @@ vpn-service/
 
 ## 🛠 Управление на сервере
 
-Обе службы работают независимо в `/var/www/vpn-service`:
+Обе службы работают независимо в `/var/www/2S-UI-tgbot-dashboard`:
 
 ```bash
 # Проверка статуса
@@ -132,13 +132,13 @@ systemctl restart vpn-bot
 systemctl restart vpn-dashboard
 
 # Изменение настроек (.env)
-nano /var/www/vpn-service/.env
+nano /var/www/2S-UI-tgbot-dashboard/.env
 systemctl restart vpn-bot vpn-dashboard
 ```
 
 ### 🔄 Быстрое обновление из Git
 ```bash
-cd /root/vpn-service
+cd /root/2S-UI-tgbot-dashboard
 sudo bash update.sh
 ```
 Скрипт подтянет свежий коммит, обновит Python-зависимости и перезапустит службы без сброса баз данных и конфигурации.
