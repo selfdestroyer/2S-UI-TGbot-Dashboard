@@ -53,7 +53,8 @@ ADMIN_TG_ID=""
 SUPPORT_BOT_USERNAME="my_vpn_support_bot"
 SERVICE_GROUP_NAME="Официальный канал сервиса"
 SERVICE_GROUP_URL="https://t.me/your_channel"
-PAYMENT_REQUISITES="💳 <b>ПЕРЕВОД ПО НОМЕРУ КАРТЫ:</b>\n<code>0000 0000 0000 0000</code>\n<i>(нажмите на номер, чтобы скопировать)</i>"
+CARD_NUMBER="0000 0000 0000 0000"
+PAYMENT_REQUISITES="💳 <b>ПЕРЕВОД ПО НОМЕРУ КАРТЫ:</b>\n<code>${CARD_NUMBER}</code>\n<i>(нажмите на номер, чтобы скопировать)</i>"
 DB_PATH="/usr/local/s-ui/db/s-ui.db"
 PANEL_PORT="2096"
 SETUP_SSL="y"
@@ -86,7 +87,14 @@ load_existing_env() {
                 SUPPORT_BOT_USERNAME) [ -n "$val" ] && SUPPORT_BOT_USERNAME="$val" ;;
                 SERVICE_GROUP_NAME) [ -n "$val" ] && SERVICE_GROUP_NAME="$val" ;;
                 SERVICE_GROUP_URL) [ -n "$val" ] && SERVICE_GROUP_URL="$val" ;;
-                PAYMENT_REQUISITES) [ -n "$val" ] && PAYMENT_REQUISITES="$val" ;;
+                CARD_NUMBER) [ -n "$val" ] && CARD_NUMBER="$val" ;;
+                PAYMENT_REQUISITES)
+                    [ -n "$val" ] && PAYMENT_REQUISITES="$val"
+                    cand_card=$(echo "$val" | sed -n 's/.*<code>\([^<]*\)<\/code>.*/\1/p' | xargs 2>/dev/null || true)
+                    if [ -n "$cand_card" ] && [ "$cand_card" != "0000 0000 0000 0000" ]; then
+                        [ -z "${CARD_NUMBER:-}" ] || [ "${CARD_NUMBER:-}" = "0000 0000 0000 0000" ] && CARD_NUMBER="$cand_card"
+                    fi
+                    ;;
                 DB_PATH) [ -n "$val" ] && DB_PATH="$val" ;;
                 PANEL_PORT) [ -n "$val" ] && PANEL_PORT="$val" ;;
             esac
@@ -104,6 +112,7 @@ show_help() {
     echo "  --domain <domain>        Поддомен для веб-дашборда и бота (например: sub.example.com)"
     echo "  --token <token>          Токен Telegram-бота от @BotFather"
     echo "  --admin <id>             ID администратора в Telegram"
+    echo "  --card <number>          Номер банковской карты для оплаты (например: 2202 2022 3333 4444)"
     echo "  --project <name>         Название проекта (по умолчанию: 'My VPN Service')"
     echo "  --support <username>     Юзернейм саппорта Telegram (без @)"
     echo "  --db <path>              Путь к SQLite базе данных (по умолчанию: /usr/local/s-ui/db/s-ui.db)"
@@ -121,6 +130,7 @@ while [[ $# -gt 0 ]]; do
         --domain|--subdomain) SUB_DOMAIN="$2"; shift 2 ;;
         --token) BOT_TOKEN="$2"; shift 2 ;;
         --admin) ADMIN_TG_ID="$2"; shift 2 ;;
+        --card|--card-number) CARD_NUMBER="$2"; shift 2 ;;
         --project) PROJECT_NAME="$2"; shift 2 ;;
         --support) SUPPORT_BOT_USERNAME="$2"; shift 2 ;;
         --db) DB_PATH="$2"; shift 2 ;;
@@ -165,7 +175,7 @@ run_wizard() {
 
     if [ "$NON_INTERACTIVE" = true ]; then
         if [ -z "$MAIN_DOMAIN" ] && [ -n "$SUB_DOMAIN" ]; then
-            MAIN_DOMAIN="$(echo "$SUB_DOMAIN" | sed -E 's~^sub\.~~')"
+            MAIN_DOMAIN="$(echo "$SUB_DOMAIN" | sed -E 's~^sub\\.~~')"
         fi
         if [ -z "$SUB_DOMAIN" ] && [ -n "$MAIN_DOMAIN" ]; then
             SUB_DOMAIN="sub.${MAIN_DOMAIN}"
@@ -174,6 +184,7 @@ run_wizard() {
             log_error "В неинтерактивном режиме обязательно укажите --main-domain (или --domain), --token и --admin!"
             exit 1
         fi
+        PAYMENT_REQUISITES="💳 <b>ПЕРЕВОД ПО НОМЕРУ КАРТЫ:</b>\n<code>${CARD_NUMBER}</code>\n<i>(нажмите на номер, чтобы скопировать)</i>"
         return
     fi
 
@@ -260,6 +271,22 @@ run_wizard() {
         done
     fi
 
+    echo -e "\n${YELLOW}Номер банковской карты для оплаты (отображается в Telegram-боте):${NC}"
+    echo -e "   (Клиенты смогут скопировать номер одним нажатием при покупке подписки)"
+    if [ -n "$CARD_NUMBER" ] && [ "$CARD_NUMBER" != "0000 0000 0000 0000" ]; then
+        read -r -p "Номер карты [$CARD_NUMBER]: " input_card
+        [ -n "$input_card" ] && CARD_NUMBER="$(echo "$input_card" | xargs)"
+    else
+        read -r -p "Номер карты [например 2202 2022 3333 4444]: " input_card
+        clean_card="$(echo "$input_card" | xargs)"
+        if [ -n "$clean_card" ]; then
+            CARD_NUMBER="$clean_card"
+        else
+            CARD_NUMBER="0000 0000 0000 0000"
+        fi
+    fi
+    PAYMENT_REQUISITES="💳 <b>ПЕРЕВОД ПО НОМЕРУ КАРТЫ:</b>\n<code>${CARD_NUMBER}</code>\n<i>(нажмите на номер, чтобы скопировать)</i>"
+
     read -r -p "Юзернейм саппорта в Telegram без @ [$SUPPORT_BOT_USERNAME]: " input_support
     [ -n "$input_support" ] && SUPPORT_BOT_USERNAME="${input_support#@}"
 
@@ -303,6 +330,7 @@ run_wizard() {
     echo "  Поддомен дашборда (для бота):   $SUB_DOMAIN"
     echo "  Проект:                         $PROJECT_NAME"
     echo "  Admin ID:                       $ADMIN_TG_ID"
+    echo "  Номер карты:                    $CARD_NUMBER"
     echo "  Саппорт:                        @$SUPPORT_BOT_USERNAME"
     echo "  База 2S-UI:                     $DB_PATH"
     echo "  Режим SSL:                      $SETUP_SSL"
@@ -387,6 +415,7 @@ SUB_DOMAIN=${SUB_DOMAIN}
 SUPPORT_BOT_USERNAME=${SUPPORT_BOT_USERNAME}
 SERVICE_GROUP_NAME=${SERVICE_GROUP_NAME}
 SERVICE_GROUP_URL=${SERVICE_GROUP_URL}
+CARD_NUMBER=${CARD_NUMBER}
 PAYMENT_REQUISITES="${PAYMENT_REQUISITES}"
 PORT=8000
 EOF
@@ -622,6 +651,9 @@ print_summary() {
     echo -e "  • Ссылка от бота (веб-дашборд):     ${CYAN}${PROTOCOL}://${SUB_DOMAIN}/{client_name}${NC}"
     echo -e "  • Ссылка на подписку (из панели):   ${CYAN}https://${MAIN_DOMAIN}:${PANEL_PORT}/sub/{client_name}${NC}"
     echo -e "  • Telegram саппорт:                 ${CYAN}@${SUPPORT_BOT_USERNAME}${NC}"
+    echo ""
+    echo -e "💳 ${BOLD}Реквизиты оплаты:${NC}"
+    echo -e "  • Карта для переводов:              ${YELLOW}${CARD_NUMBER}${NC}"
     echo ""
     echo -e "🛠 ${BOLD}Управление сервисами (вручную запускать ничего не требуется):${NC}"
     echo -e "  • Статус бота:              ${YELLOW}systemctl status vpn-bot${NC}"

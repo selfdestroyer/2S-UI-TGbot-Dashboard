@@ -30,10 +30,22 @@ else:
 SUPPORT_BOT_USERNAME = os.getenv("SUPPORT_BOT_USERNAME", "your_support_bot")
 SERVICE_GROUP_NAME = os.getenv("SERVICE_GROUP_NAME", "Инфо-канал сервиса")
 SERVICE_GROUP_URL = os.getenv("SERVICE_GROUP_URL", "https://t.me/your_channel")
-PAYMENT_REQUISITES = os.getenv(
-    "PAYMENT_REQUISITES",
-    "💳 <b>ПЕРЕВОД ПО НОМЕРУ КАРТЫ:</b>\n<code>0000 0000 0000 0000</code>\n<i>(нажмите на номер, чтобы скопировать)</i>"
-).replace("\\n", "\n")
+CARD_NUMBER = os.getenv("CARD_NUMBER", "").strip()
+_raw_payment = os.getenv("PAYMENT_REQUISITES", "").strip()
+if _raw_payment:
+    PAYMENT_REQUISITES = _raw_payment.replace("\\n", "\n")
+elif CARD_NUMBER:
+    PAYMENT_REQUISITES = (
+        f"💳 <b>ПЕРЕВОД ПО НОМЕРУ КАРТЫ:</b>\n"
+        f"<code>{CARD_NUMBER}</code>\n"
+        f"<i>(нажмите на номер, чтобы скопировать)</i>"
+    )
+else:
+    PAYMENT_REQUISITES = (
+        "💳 <b>ПЕРЕВОД ПО НОМЕРУ КАРТЫ:</b>\n"
+        "<code>0000 0000 0000 0000</code>\n"
+        "<i>(нажмите на номер, чтобы скопировать)</i>"
+    )
 PROJECT_NAME = os.getenv("PROJECT_NAME", "My VPN Service")
 
 # База данных для истории отправленных уведомлений (защита от дублирования)
