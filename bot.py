@@ -34,6 +34,7 @@ PAYMENT_REQUISITES = os.getenv(
     "PAYMENT_REQUISITES",
     "💳 <b>ПЕРЕВОД ПО НОМЕРУ КАРТЫ:</b>\n<code>0000 0000 0000 0000</code>\n<i>(нажмите на номер, чтобы скопировать)</i>"
 ).replace("\\n", "\n")
+PROJECT_NAME = os.getenv("PROJECT_NAME", "My VPN Service")
 
 # База данных для истории отправленных уведомлений (защита от дублирования)
 BOT_DATA_DB = os.getenv("BOT_DATA_DB", os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot_data.db"))
