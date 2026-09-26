@@ -357,7 +357,10 @@ async def cb_my_subscription(callback: types.CallbackQuery):
     
     if subs:
         # Успешный кейс: подписка найдена
-        links_text = "\n".join([f"🔗 {s['name']} ({s['date_str']}): https://{SUB_DOMAIN}/{s['name']}" for s in subs])
+        links_text = "\n".join([
+            f"🔗 {s['name']} ({s['date_str']}" + (f", сброс: {s['reset_str']}" if s.get("reset_str") else "") + f"): https://{SUB_DOMAIN}/{s['name']}"
+            for s in subs
+        ])
         
         # Отправляем красивый отчет вам (админу)
         try:
@@ -373,10 +376,13 @@ async def cb_my_subscription(callback: types.CallbackQuery):
         except Exception as e:
             logging.error(f"Не удалось отправить уведомление админу: {e}")
 
-        # Формируем inline-кнопки со ссылками на подписки: Имя профиля | Дата окончания
+        # Формируем inline-кнопки со ссылками на подписки: Имя профиля | Срок | Дата сброса трафика
         sub_buttons = []
         for s in subs:
-            btn_title = f"{s['name']} | {s['date_str']}"
+            if s.get("reset_str"):
+                btn_title = f"{s['name']} | {s['date_str']} | Сброс: {s['reset_str']}"
+            else:
+                btn_title = f"{s['name']} | {s['date_str']}"
             sub_buttons.append([InlineKeyboardButton(text=btn_title, url=f"https://{SUB_DOMAIN}/{s['name']}")])
         
         sub_buttons.append([InlineKeyboardButton(text=f"👥 {SERVICE_GROUP_NAME}", url=SERVICE_GROUP_URL)])
@@ -695,7 +701,7 @@ def find_subscriptions_by_tg_id(telegram_id: str):
         cursor = conn.cursor()
         
         query = """
-            SELECT name, expiry FROM clients 
+            SELECT name, expiry, auto_reset, next_reset FROM clients 
             WHERE desc LIKE ? OR remark LIKE ? OR tg_id = ?
         """
         tg_num = int(telegram_id) if str(telegram_id).isdigit() else 0
@@ -704,16 +710,25 @@ def find_subscriptions_by_tg_id(telegram_id: str):
         conn.close()
         
         subs = []
-        for name, expiry in rows:
+        for name, expiry, auto_reset, next_reset in rows:
             if expiry and expiry > 0:
                 ts = expiry / 1000 if expiry > 100_000_000_000 else expiry
                 date_str = datetime.fromtimestamp(ts).strftime("%d.%m.%Y")
             else:
                 date_str = "Бессрочно"
+
+            reset_str = None
+            if auto_reset and next_reset and next_reset > 0:
+                r_ts = next_reset / 1000 if next_reset > 100_000_000_000 else next_reset
+                reset_str = datetime.fromtimestamp(r_ts).strftime("%d.%m.%Y")
+
             subs.append({
                 "name": name,
                 "expiry": expiry,
                 "date_str": date_str,
+                "auto_reset": bool(auto_reset),
+                "next_reset": next_reset,
+                "reset_str": reset_str,
             })
         return subs
     except Exception as e:
