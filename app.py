@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import sqlite3
 from datetime import datetime, date
@@ -24,25 +25,35 @@ def get_html_content() -> str:
     with open(target_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    project_name = os.getenv("PROJECT_NAME", "").strip() or "Podnyatie VPN"
-    main_domain = os.getenv("MAIN_DOMAIN", "").strip() or "podnyatie.space"
+    project_name = os.getenv("PROJECT_NAME", "").strip() or "VPN Service"
+    main_domain = os.getenv("MAIN_DOMAIN", "").strip()
     panel_port = os.getenv("PANEL_PORT", "2096").strip() or "2096"
-    support_bot = os.getenv("SUPPORT_BOT_USERNAME", "").strip().lstrip("@") or "podnyatie_support_bot"
+    support_bot = os.getenv("SUPPORT_BOT_USERNAME", "").strip().lstrip("@") or "your_support_bot"
     main_bot = os.getenv("BOT_USERNAME", "").strip().lstrip("@") or support_bot
+    service_group_name = os.getenv("SERVICE_GROUP_NAME", "").strip()
+    service_group_url = os.getenv("SERVICE_GROUP_URL", "").strip()
 
-    # Замена конфигурации JS
-    content = content.replace('window.PROJECT_NAME = window.PROJECT_NAME || "Podnyatie VPN";', f'window.PROJECT_NAME = "{project_name}";')
-    content = content.replace('window.PANEL_DOMAIN = window.PANEL_DOMAIN || "podnyatie.space";', f'window.PANEL_DOMAIN = "{main_domain}";')
-    content = content.replace('window.PANEL_PORT = window.PANEL_PORT || "2096";', f'window.PANEL_PORT = "{panel_port}";')
-    content = content.replace('window.BOT_USERNAME = window.BOT_USERNAME || "podnyatie_vpn_bot";', f'window.BOT_USERNAME = "{main_bot}";')
-    content = content.replace('window.SUPPORT_BOT_USERNAME = window.SUPPORT_BOT_USERNAME || "podnyatie_support_bot";', f'window.SUPPORT_BOT_USERNAME = "{support_bot}";')
+    # Замена конфигурации JS через регулярные выражения
+    content = re.sub(r'window\.PROJECT_NAME\s*=\s*[^;]+;', f'window.PROJECT_NAME = "{project_name}";', content)
+    content = re.sub(r'window\.PANEL_DOMAIN\s*=\s*[^;]+;', f'window.PANEL_DOMAIN = "{main_domain}";', content)
+    content = re.sub(r'window\.PANEL_PORT\s*=\s*[^;]+;', f'window.PANEL_PORT = "{panel_port}";', content)
+    content = re.sub(r'window\.BOT_USERNAME\s*=\s*[^;]+;', f'window.BOT_USERNAME = "{main_bot}";', content)
+    content = re.sub(r'window\.SUPPORT_BOT_USERNAME\s*=\s*[^;]+;', f'window.SUPPORT_BOT_USERNAME = "{support_bot}";', content)
+    content = re.sub(r'window\.SERVICE_GROUP_NAME\s*=\s*[^;]+;', f'window.SERVICE_GROUP_NAME = "{service_group_name}";', content)
+    content = re.sub(r'window\.SERVICE_GROUP_URL\s*=\s*[^;]+;', f'window.SERVICE_GROUP_URL = "{service_group_url}";', content)
 
     # Прямая замена плейсхолдеров
     content = content.replace("{{ PROJECT_NAME }}", project_name)
     content = content.replace("{{ BOT_USERNAME }}", main_bot)
     content = content.replace("{{ SUPPORT_BOT_USERNAME }}", support_bot)
+    content = content.replace("{{ SERVICE_GROUP_NAME }}", service_group_name or "Инфо-канал")
+    content = content.replace("{{ SERVICE_GROUP_URL }}", service_group_url)
 
-    # Обратная совместимость с дефолтной разметкой
+    # Отображение карточки инфо-канала, если задан валидный URL
+    if service_group_url and service_group_url.startswith("http"):
+        content = content.replace('id="channel-link" style="display: none;"', 'id="channel-link" style="display: flex;"')
+
+    # Обратная совместимость с устаревшей дефолтной разметкой
     content = content.replace('<h1 id="brand-title">podnyatie.space</h1>', f'<h1 id="brand-title">{project_name}</h1>')
     content = content.replace('<title>Настройка VPN - podnyatie.space</title>', f'<title>Настройка VPN - {project_name}</title>')
     content = content.replace('@podnyatie_vpn_bot', f'@{main_bot}')
@@ -188,8 +199,10 @@ async def subscription_api(username: str, response: Response):
 # ----------------- ОБСЛУЖИВАНИЕ ФРОНТЕНДА -----------------
 
 def get_404_html() -> str:
-    bot_name = os.getenv("SUPPORT_BOT_USERNAME", os.getenv("BOT_USERNAME", "podnyatie_support_bot")).strip().lstrip("@")
-    bot_link = f"https://t.me/{bot_name}" if bot_name else "#"
+    bot_name = os.getenv("SUPPORT_BOT_USERNAME", os.getenv("BOT_USERNAME", "your_support_bot")).strip().lstrip("@")
+    has_valid_bot = bot_name and bot_name != "your_support_bot"
+    bot_link = f"https://t.me/{bot_name}" if has_valid_bot else "#"
+    bot_label = f" (@{bot_name})" if has_valid_bot else ""
     project_name = os.getenv("PROJECT_NAME", "VPN").strip() or "VPN"
     return f"""<!DOCTYPE html>
 <html lang="ru">
@@ -209,7 +222,7 @@ def get_404_html() -> str:
     <div class="error-box">
         <h2>Ошибка 404</h2>
         <p>Такой подписки не существует. Проверьте правильность ссылки.</p>
-        <p><a href="{bot_link}">Перейти в Telegram-бот (@{bot_name})</a></p>
+        <p><a href="{bot_link}">Перейти в Telegram-бот{bot_label}</a></p>
     </div>
 </body>
 </html>"""

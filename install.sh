@@ -272,6 +272,14 @@ run_wizard() {
         fi
     fi
 
+    echo -e "\n${YELLOW}Telegram-боты сервиса:${NC}"
+    read -r -p "Юзернейм основного бота подписок без @ [${BOT_USERNAME:-my_vpn_bot}]: " input_bot_user
+    if [ -n "$input_bot_user" ]; then
+        BOT_USERNAME="${input_bot_user#@}"
+    elif [ -z "$BOT_USERNAME" ]; then
+        BOT_USERNAME="my_vpn_bot"
+    fi
+
     if [ -n "$ADMIN_TG_ID" ]; then
         echo -e "\n${YELLOW}Цифровой Telegram ID администратора (от @userinfobot):${NC}"
         read -r -p "ADMIN_TG_ID [$ADMIN_TG_ID]: " input_admin
@@ -342,9 +350,11 @@ run_wizard() {
     echo "  Основной домен (панель 2S-UI):  $MAIN_DOMAIN (порт $PANEL_PORT)"
     echo "  Поддомен дашборда (для бота):   $SUB_DOMAIN"
     echo "  Проект:                         $PROJECT_NAME"
+    echo "  Основной бот:                   @$BOT_USERNAME"
+    echo "  Саппорт:                        @$SUPPORT_BOT_USERNAME"
+    echo "  Инфо-канал:                     $SERVICE_GROUP_NAME ($SERVICE_GROUP_URL)"
     echo "  Admin ID:                       $ADMIN_TG_ID"
     echo "  Номер карты:                    $CARD_NUMBER"
-    echo "  Саппорт:                        @$SUPPORT_BOT_USERNAME"
     echo "  База 2S-UI:                     $DB_PATH"
     echo "  Режим SSL:                      $SETUP_SSL"
     echo -e "${CYAN}------------------------------------------------------------------${NC}"
@@ -392,14 +402,21 @@ deploy_project_files() {
     if [ -f "${INSTALL_DIR}/index.html" ]; then
         log_info "Адаптация веб-интерфейса index.html под домен и проект..."
         active_bot="${BOT_USERNAME:-$SUPPORT_BOT_USERNAME}"
-        sed -i "s/window\.PROJECT_NAME = window\.PROJECT_NAME || \".*\"/window.PROJECT_NAME = \"${PROJECT_NAME}\"/g" "${INSTALL_DIR}/index.html"
-        sed -i "s/window\.PANEL_DOMAIN = window\.PANEL_DOMAIN || \".*\"/window.PANEL_DOMAIN = \"${MAIN_DOMAIN}\"/g" "${INSTALL_DIR}/index.html"
-        sed -i "s/window\.PANEL_PORT = window\.PANEL_PORT || \".*\"/window.PANEL_PORT = \"${PANEL_PORT}\"/g" "${INSTALL_DIR}/index.html"
-        sed -i "s/window\.BOT_USERNAME = window\.BOT_USERNAME || \".*\"/window.BOT_USERNAME = \"${active_bot}\"/g" "${INSTALL_DIR}/index.html"
-        sed -i "s/window\.SUPPORT_BOT_USERNAME = window\.SUPPORT_BOT_USERNAME || \".*\"/window.SUPPORT_BOT_USERNAME = \"${SUPPORT_BOT_USERNAME}\"/g" "${INSTALL_DIR}/index.html"
+        sed -i "s|window\.PROJECT_NAME = window\.PROJECT_NAME || \".*\"|window.PROJECT_NAME = \"${PROJECT_NAME}\"|g" "${INSTALL_DIR}/index.html"
+        sed -i "s|window\.PANEL_DOMAIN = window\.PANEL_DOMAIN || \".*\"|window.PANEL_DOMAIN = \"${MAIN_DOMAIN}\"|g" "${INSTALL_DIR}/index.html"
+        sed -i "s|window\.PANEL_PORT = window\.PANEL_PORT || \".*\"|window.PANEL_PORT = \"${PANEL_PORT}\"|g" "${INSTALL_DIR}/index.html"
+        sed -i "s|window\.BOT_USERNAME = window\.BOT_USERNAME || \".*\"|window.BOT_USERNAME = \"${active_bot}\"|g" "${INSTALL_DIR}/index.html"
+        sed -i "s|window\.SUPPORT_BOT_USERNAME = window\.SUPPORT_BOT_USERNAME || \".*\"|window.SUPPORT_BOT_USERNAME = \"${SUPPORT_BOT_USERNAME}\"|g" "${INSTALL_DIR}/index.html"
+        sed -i "s|window\.SERVICE_GROUP_NAME = window\.SERVICE_GROUP_NAME || \".*\"|window.SERVICE_GROUP_NAME = \"${SERVICE_GROUP_NAME}\"|g" "${INSTALL_DIR}/index.html"
+        sed -i "s|window\.SERVICE_GROUP_URL = window\.SERVICE_GROUP_URL || \".*\"|window.SERVICE_GROUP_URL = \"${SERVICE_GROUP_URL}\"|g" "${INSTALL_DIR}/index.html"
         sed -i "s/{{ PROJECT_NAME }}/${PROJECT_NAME}/g" "${INSTALL_DIR}/index.html"
         sed -i "s/{{ BOT_USERNAME }}/${active_bot}/g" "${INSTALL_DIR}/index.html"
         sed -i "s/{{ SUPPORT_BOT_USERNAME }}/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/{{ SERVICE_GROUP_NAME }}/${SERVICE_GROUP_NAME}/g" "${INSTALL_DIR}/index.html"
+        sed -i "s|{{ SERVICE_GROUP_URL }}|${SERVICE_GROUP_URL}|g" "${INSTALL_DIR}/index.html"
+        if [ -n "$SERVICE_GROUP_URL" ] && [ "$SERVICE_GROUP_URL" != "https://t.me/your_channel" ]; then
+            sed -i 's/id="channel-link" style="display: none;"/id="channel-link" style="display: flex;"/g' "${INSTALL_DIR}/index.html"
+        fi
         sed -i "s/<h1 id=\"brand-title\">.*<\/h1>/<h1 id=\"brand-title\">${PROJECT_NAME}<\/h1>/g" "${INSTALL_DIR}/index.html"
         sed -i "s/<title>Настройка VPN - .*<\/title>/<title>Настройка VPN - ${PROJECT_NAME}<\/title>/g" "${INSTALL_DIR}/index.html"
         sed -i "s/podnyatie_support_bot/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
