@@ -407,16 +407,9 @@ deploy_project_files() {
         sed -i "s|window\.PANEL_PORT = window\.PANEL_PORT || \".*\"|window.PANEL_PORT = \"${PANEL_PORT}\"|g" "${INSTALL_DIR}/index.html"
         sed -i "s|window\.BOT_USERNAME = window\.BOT_USERNAME || \".*\"|window.BOT_USERNAME = \"${active_bot}\"|g" "${INSTALL_DIR}/index.html"
         sed -i "s|window\.SUPPORT_BOT_USERNAME = window\.SUPPORT_BOT_USERNAME || \".*\"|window.SUPPORT_BOT_USERNAME = \"${SUPPORT_BOT_USERNAME}\"|g" "${INSTALL_DIR}/index.html"
-        sed -i "s|window\.SERVICE_GROUP_NAME = window\.SERVICE_GROUP_NAME || \".*\"|window.SERVICE_GROUP_NAME = \"${SERVICE_GROUP_NAME}\"|g" "${INSTALL_DIR}/index.html"
-        sed -i "s|window\.SERVICE_GROUP_URL = window\.SERVICE_GROUP_URL || \".*\"|window.SERVICE_GROUP_URL = \"${SERVICE_GROUP_URL}\"|g" "${INSTALL_DIR}/index.html"
         sed -i "s/{{ PROJECT_NAME }}/${PROJECT_NAME}/g" "${INSTALL_DIR}/index.html"
         sed -i "s/{{ BOT_USERNAME }}/${active_bot}/g" "${INSTALL_DIR}/index.html"
         sed -i "s/{{ SUPPORT_BOT_USERNAME }}/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
-        sed -i "s/{{ SERVICE_GROUP_NAME }}/${SERVICE_GROUP_NAME}/g" "${INSTALL_DIR}/index.html"
-        sed -i "s|{{ SERVICE_GROUP_URL }}|${SERVICE_GROUP_URL}|g" "${INSTALL_DIR}/index.html"
-        if [ -n "$SERVICE_GROUP_URL" ] && [ "$SERVICE_GROUP_URL" != "https://t.me/your_channel" ]; then
-            sed -i 's/id="channel-link" style="display: none;"/id="channel-link" style="display: flex;"/g' "${INSTALL_DIR}/index.html"
-        fi
         sed -i "s/<h1 id=\"brand-title\">.*<\/h1>/<h1 id=\"brand-title\">${PROJECT_NAME}<\/h1>/g" "${INSTALL_DIR}/index.html"
         sed -i "s/<title>Настройка VPN - .*<\/title>/<title>Настройка VPN - ${PROJECT_NAME}<\/title>/g" "${INSTALL_DIR}/index.html"
         sed -i "s/podnyatie_support_bot/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"

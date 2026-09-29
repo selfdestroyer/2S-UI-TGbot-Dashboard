@@ -30,8 +30,6 @@ def get_html_content() -> str:
     panel_port = os.getenv("PANEL_PORT", "2096").strip() or "2096"
     support_bot = os.getenv("SUPPORT_BOT_USERNAME", "").strip().lstrip("@") or "your_support_bot"
     main_bot = os.getenv("BOT_USERNAME", "").strip().lstrip("@") or support_bot
-    service_group_name = os.getenv("SERVICE_GROUP_NAME", "").strip()
-    service_group_url = os.getenv("SERVICE_GROUP_URL", "").strip()
 
     # Замена конфигурации JS через регулярные выражения
     content = re.sub(r'window\.PROJECT_NAME\s*=\s*[^;]+;', f'window.PROJECT_NAME = "{project_name}";', content)
@@ -39,19 +37,11 @@ def get_html_content() -> str:
     content = re.sub(r'window\.PANEL_PORT\s*=\s*[^;]+;', f'window.PANEL_PORT = "{panel_port}";', content)
     content = re.sub(r'window\.BOT_USERNAME\s*=\s*[^;]+;', f'window.BOT_USERNAME = "{main_bot}";', content)
     content = re.sub(r'window\.SUPPORT_BOT_USERNAME\s*=\s*[^;]+;', f'window.SUPPORT_BOT_USERNAME = "{support_bot}";', content)
-    content = re.sub(r'window\.SERVICE_GROUP_NAME\s*=\s*[^;]+;', f'window.SERVICE_GROUP_NAME = "{service_group_name}";', content)
-    content = re.sub(r'window\.SERVICE_GROUP_URL\s*=\s*[^;]+;', f'window.SERVICE_GROUP_URL = "{service_group_url}";', content)
 
     # Прямая замена плейсхолдеров
     content = content.replace("{{ PROJECT_NAME }}", project_name)
     content = content.replace("{{ BOT_USERNAME }}", main_bot)
     content = content.replace("{{ SUPPORT_BOT_USERNAME }}", support_bot)
-    content = content.replace("{{ SERVICE_GROUP_NAME }}", service_group_name or "Инфо-канал")
-    content = content.replace("{{ SERVICE_GROUP_URL }}", service_group_url)
-
-    # Отображение карточки инфо-канала, если задан валидный URL
-    if service_group_url and service_group_url.startswith("http"):
-        content = content.replace('id="channel-link" style="display: none;"', 'id="channel-link" style="display: flex;"')
 
     # Обратная совместимость с устаревшей дефолтной разметкой
     content = content.replace('<h1 id="brand-title">podnyatie.space</h1>', f'<h1 id="brand-title">{project_name}</h1>')

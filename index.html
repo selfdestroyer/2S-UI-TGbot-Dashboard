@@ -381,7 +381,7 @@
         }
         .actions-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
         .action-card {
@@ -427,21 +427,6 @@
         .action-icon-box.support-icon {
             background: rgba(6, 182, 212, 0.2);
             color: #67e8f9;
-        }
-
-        /* Кнопка новостного канала / группы */
-        .action-card.channel-card {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.12));
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-        .action-card.channel-card:hover {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2));
-            border-color: #34d399;
-            box-shadow: 0 8px 20px -6px rgba(16, 185, 129, 0.3);
-        }
-        .action-icon-box.channel-icon {
-            background: rgba(16, 185, 129, 0.2);
-            color: #6ee7b7;
         }
 
         .action-icon-box {
@@ -724,24 +709,6 @@
                             </svg>
                         </div>
                     </a>
-
-                    <!-- Новостной канал / Группа -->
-                    <a href="{{ SERVICE_GROUP_URL }}" target="_blank" class="action-card channel-card" id="channel-link" style="display: none;">
-                        <div class="action-icon-box channel-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21.5 2L2 9.5l7 3 2.5 7.5 3-4 5.5 4L21.5 2z"></path>
-                            </svg>
-                        </div>
-                        <div class="action-content">
-                            <span class="action-title" id="channel-title">{{ SERVICE_GROUP_NAME }}</span>
-                            <span class="action-subtitle" id="channel-subtitle">Новости и обновления</span>
-                        </div>
-                        <div class="action-arrow">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                        </div>
-                    </a>
                 </div>
             </div>
         </div>
@@ -758,8 +725,6 @@
         window.PANEL_PORT = window.PANEL_PORT || "2096";
         window.BOT_USERNAME = window.BOT_USERNAME || "your_vpn_bot";
         window.SUPPORT_BOT_USERNAME = window.SUPPORT_BOT_USERNAME || "your_support_bot";
-        window.SERVICE_GROUP_NAME = window.SERVICE_GROUP_NAME || "";
-        window.SERVICE_GROUP_URL = window.SERVICE_GROUP_URL || "";
 
         const currentHost = window.location.hostname;
         const rootDomain = (window.PANEL_DOMAIN && !window.PANEL_DOMAIN.includes("{{")) 
@@ -794,18 +759,6 @@
         const supSub = document.getElementById("support-subtitle");
         if (supLink) supLink.href = "https://t.me/" + cleanSupport;
         if (supSub) supSub.textContent = "@" + cleanSupport;
-
-        if (window.SERVICE_GROUP_URL && !window.SERVICE_GROUP_URL.includes("{{") && window.SERVICE_GROUP_URL.startsWith("http")) {
-            const chanLink = document.getElementById("channel-link");
-            const chanTitle = document.getElementById("channel-title");
-            if (chanLink) {
-                chanLink.href = window.SERVICE_GROUP_URL;
-                chanLink.style.display = "flex";
-            }
-            if (chanTitle && window.SERVICE_GROUP_NAME && !window.SERVICE_GROUP_NAME.includes("{{") && window.SERVICE_GROUP_NAME.trim() !== "") {
-                chanTitle.textContent = window.SERVICE_GROUP_NAME;
-            }
-        }
 
         const urlParams = new URLSearchParams(window.location.search);
         let subPath = urlParams.get('url');
