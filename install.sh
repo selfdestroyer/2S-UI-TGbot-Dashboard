@@ -50,6 +50,7 @@ SUB_DOMAIN=""
 PROJECT_NAME="My VPN Service"
 BOT_TOKEN=""
 ADMIN_TG_ID=""
+BOT_USERNAME=""
 SUPPORT_BOT_USERNAME="my_vpn_support_bot"
 SERVICE_GROUP_NAME="Официальный канал сервиса"
 SERVICE_GROUP_URL="https://t.me/your_channel"
@@ -84,6 +85,7 @@ load_existing_env() {
                 PROJECT_NAME) [ -n "$val" ] && PROJECT_NAME="$val" ;;
                 BOT_TOKEN) [ -n "$val" ] && BOT_TOKEN="$val" ;;
                 ADMIN_TG_ID) [ -n "$val" ] && ADMIN_TG_ID="$val" ;;
+                BOT_USERNAME) [ -n "$val" ] && BOT_USERNAME="$val" ;;
                 SUPPORT_BOT_USERNAME) [ -n "$val" ] && SUPPORT_BOT_USERNAME="$val" ;;
                 SERVICE_GROUP_NAME) [ -n "$val" ] && SERVICE_GROUP_NAME="$val" ;;
                 SERVICE_GROUP_URL) [ -n "$val" ] && SERVICE_GROUP_URL="$val" ;;
@@ -132,6 +134,7 @@ while [[ $# -gt 0 ]]; do
         --admin) ADMIN_TG_ID="$2"; shift 2 ;;
         --card|--card-number) CARD_NUMBER="$2"; shift 2 ;;
         --project) PROJECT_NAME="$2"; shift 2 ;;
+        --bot-username) BOT_USERNAME="$2"; shift 2 ;;
         --support) SUPPORT_BOT_USERNAME="$2"; shift 2 ;;
         --db) DB_PATH="$2"; shift 2 ;;
         --panel-port) PANEL_PORT="$2"; shift 2 ;;
@@ -259,6 +262,16 @@ run_wizard() {
         done
     fi
 
+    # Автоматическое определение юзернейма бота через Telegram API
+    if [ -n "$BOT_TOKEN" ] && [ -z "$BOT_USERNAME" ]; then
+        log_info "Определение юзернейма бота через Telegram API..."
+        cand_username=$(curl -s --max-time 10 "https://api.telegram.org/bot${BOT_TOKEN}/getMe" 2>/dev/null | grep -o '"username":"[^"]*"' | cut -d'"' -f4 || true)
+        if [ -n "$cand_username" ]; then
+            BOT_USERNAME="$cand_username"
+            log_success "Юзернейм бота успешно определен: @${BOT_USERNAME}"
+        fi
+    fi
+
     if [ -n "$ADMIN_TG_ID" ]; then
         echo -e "\n${YELLOW}Цифровой Telegram ID администратора (от @userinfobot):${NC}"
         read -r -p "ADMIN_TG_ID [$ADMIN_TG_ID]: " input_admin
@@ -378,11 +391,19 @@ deploy_project_files() {
     # Кастомизация фронтенда
     if [ -f "${INSTALL_DIR}/index.html" ]; then
         log_info "Адаптация веб-интерфейса index.html под домен и проект..."
+        active_bot="${BOT_USERNAME:-$SUPPORT_BOT_USERNAME}"
+        sed -i "s/window\.PROJECT_NAME = window\.PROJECT_NAME || \".*\"/window.PROJECT_NAME = \"${PROJECT_NAME}\"/g" "${INSTALL_DIR}/index.html"
         sed -i "s/window\.PANEL_DOMAIN = window\.PANEL_DOMAIN || \".*\"/window.PANEL_DOMAIN = \"${MAIN_DOMAIN}\"/g" "${INSTALL_DIR}/index.html"
         sed -i "s/window\.PANEL_PORT = window\.PANEL_PORT || \".*\"/window.PANEL_PORT = \"${PANEL_PORT}\"/g" "${INSTALL_DIR}/index.html"
-        sed -i "s/podnyatie\.space/${MAIN_DOMAIN}/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/window\.BOT_USERNAME = window\.BOT_USERNAME || \".*\"/window.BOT_USERNAME = \"${active_bot}\"/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/window\.SUPPORT_BOT_USERNAME = window\.SUPPORT_BOT_USERNAME || \".*\"/window.SUPPORT_BOT_USERNAME = \"${SUPPORT_BOT_USERNAME}\"/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/{{ PROJECT_NAME }}/${PROJECT_NAME}/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/{{ BOT_USERNAME }}/${active_bot}/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/{{ SUPPORT_BOT_USERNAME }}/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/<h1 id=\"brand-title\">.*<\/h1>/<h1 id=\"brand-title\">${PROJECT_NAME}<\/h1>/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/<title>Настройка VPN - .*<\/title>/<title>Настройка VPN - ${PROJECT_NAME}<\/title>/g" "${INSTALL_DIR}/index.html"
         sed -i "s/podnyatie_support_bot/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
-        sed -i "s/podnyatie_vpn_bot/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
+        sed -i "s/podnyatie_vpn_bot/${active_bot}/g" "${INSTALL_DIR}/index.html"
     fi
 
     # Создание общего виртуального окружения Python
@@ -397,6 +418,7 @@ deploy_project_files() {
 
     # Создание единого файла конфигурации .env
     log_info "Создание конфигурации ${INSTALL_DIR}/.env..."
+    active_bot="${BOT_USERNAME:-$SUPPORT_BOT_USERNAME}"
     cat > "${INSTALL_DIR}/.env" <<EOF
 # Единая конфигурация VPN Suite (сгенерировано инсталятором)
 BOT_TOKEN=${BOT_TOKEN}
@@ -404,6 +426,7 @@ ADMIN_TG_ID=${ADMIN_TG_ID}
 DB_PATH=${DB_PATH}
 BOT_DATA_DB=${INSTALL_DIR}/bot_data.db
 PROJECT_NAME=${PROJECT_NAME}
+BOT_USERNAME=${active_bot}
 
 # Основной домен сервера с панелью 2S-UI и порт для сырых подписок
 MAIN_DOMAIN=${MAIN_DOMAIN}

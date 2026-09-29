@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Настройка VPN - podnyatie.space</title>
+    <title>Настройка VPN - {{ PROJECT_NAME }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -548,7 +548,7 @@
     </svg>
 
     <div class="container">
-        <h1 id="brand-title">podnyatie.space</h1>
+        <h1 id="brand-title">{{ PROJECT_NAME }}</h1>
         <p class="subtitle">Установка конфигурации VPN</p>
 
         <div id="error-msg">
@@ -674,7 +674,7 @@
                 <h2>Сервис и поддержка</h2>
                 <div class="actions-grid">
                     <!-- Кнопка покупки/продления -->
-                    <a href="https://t.me/podnyatie_vpn_bot" target="_blank" class="action-card buy-card">
+                    <a href="https://t.me/podnyatie_vpn_bot" target="_blank" class="action-card buy-card" id="buy-link">
                         <div class="action-icon-box buy-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="2" y="5" width="20" height="14" rx="3" ry="3"></rect>
@@ -683,7 +683,7 @@
                         </div>
                         <div class="action-content">
                             <span class="action-title">Купить / Продлить</span>
-                            <span class="action-subtitle">@podnyatie_vpn_bot</span>
+                            <span class="action-subtitle" id="buy-subtitle">@podnyatie_vpn_bot</span>
                         </div>
                         <div class="action-arrow">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -693,7 +693,7 @@
                     </a>
 
                     <!-- Кнопка поддержки -->
-                    <a href="https://t.me/podnyatie_support_bot" target="_blank" class="action-card support-card">
+                    <a href="https://t.me/podnyatie_support_bot" target="_blank" class="action-card support-card" id="support-link">
                         <div class="action-icon-box support-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
@@ -701,7 +701,7 @@
                         </div>
                         <div class="action-content">
                             <span class="action-title">Поддержка</span>
-                            <span class="action-subtitle">@podnyatie_support_bot</span>
+                            <span class="action-subtitle" id="support-subtitle">@podnyatie_support_bot</span>
                         </div>
                         <div class="action-arrow">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -719,22 +719,47 @@
     </div>
 
     <script>
-        // Конфигурация основного домена панели 2S-UI (без префикса sub.)
+        // Конфигурация названия проекта и домена панели 2S-UI
+        window.PROJECT_NAME = window.PROJECT_NAME || "Podnyatie VPN";
         window.PANEL_DOMAIN = window.PANEL_DOMAIN || "podnyatie.space";
         window.PANEL_PORT = window.PANEL_PORT || "2096";
+        window.BOT_USERNAME = window.BOT_USERNAME || "podnyatie_vpn_bot";
+        window.SUPPORT_BOT_USERNAME = window.SUPPORT_BOT_USERNAME || "podnyatie_support_bot";
 
         const currentHost = window.location.hostname;
-        const rootDomain = (window.PANEL_DOMAIN && window.PANEL_DOMAIN !== "podnyatie.space") 
+        const rootDomain = (window.PANEL_DOMAIN && window.PANEL_DOMAIN !== "podnyatie.space" && !window.PANEL_DOMAIN.includes("{{")) 
             ? window.PANEL_DOMAIN 
             : (currentHost ? currentHost.replace(/^sub\./i, '') : "podnyatie.space");
         const panelPort = window.PANEL_PORT || "2096";
 
-        if (rootDomain) {
-            document.title = "Настройка VPN - " + rootDomain;
-            const brandEl = document.getElementById("brand-title");
+        // Название проекта на странице (приоритет: PROJECT_NAME -> текст brand-title -> rootDomain)
+        const brandEl = document.getElementById("brand-title");
+        const initialBrand = (brandEl && brandEl.textContent && !brandEl.textContent.includes("{{")) ? brandEl.textContent.trim() : "";
+        const projectName = (window.PROJECT_NAME && !window.PROJECT_NAME.includes("{{")) 
+            ? window.PROJECT_NAME 
+            : (initialBrand || rootDomain);
+
+        if (projectName) {
+            document.title = "Настройка VPN - " + projectName;
             if (brandEl) {
-                brandEl.textContent = rootDomain;
+                brandEl.textContent = projectName;
             }
+        }
+
+        // Обновление ссылок на Telegram-ботов
+        if (window.BOT_USERNAME && !window.BOT_USERNAME.includes("{{")) {
+            const cleanBot = window.BOT_USERNAME.replace(/^@/, '');
+            const buyLink = document.getElementById("buy-link");
+            const buySub = document.getElementById("buy-subtitle");
+            if (buyLink) buyLink.href = "https://t.me/" + cleanBot;
+            if (buySub) buySub.textContent = "@" + cleanBot;
+        }
+        if (window.SUPPORT_BOT_USERNAME && !window.SUPPORT_BOT_USERNAME.includes("{{")) {
+            const cleanSupport = window.SUPPORT_BOT_USERNAME.replace(/^@/, '');
+            const supLink = document.getElementById("support-link");
+            const supSub = document.getElementById("support-subtitle");
+            if (supLink) supLink.href = "https://t.me/" + cleanSupport;
+            if (supSub) supSub.textContent = "@" + cleanSupport;
         }
 
         const urlParams = new URLSearchParams(window.location.search);

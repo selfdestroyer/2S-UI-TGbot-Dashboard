@@ -105,6 +105,7 @@
 | `DB_PATH` | `/usr/local/s-ui/db/s-ui.db` | Путь к SQLite базе данных панели 2S-UI / S-UI |
 | `BOT_DATA_DB` | `bot_data.db` | База данных служебных таблиц бота (уведомления, рассылки) |
 | `PROJECT_NAME` | `My VPN Service` | Название сервиса в боте и веб-интерфейсе |
+| `BOT_USERNAME` | `my_vpn_bot` | Юзернейм основного Telegram-бота подписок (без `@`) |
 | `MAIN_DOMAIN` | `example.com` | Основной домен сервера с панелью 2S-UI |
 | `PANEL_PORT` | `2096` | Порт панели 2S-UI для выдачи подписок |
 | `SUB_DOMAIN` | `sub.example.com` | Поддомен веб-дашборда (`https://{SUB_DOMAIN}/{client_name}`) |

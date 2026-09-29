@@ -1,9 +1,14 @@
-from fastapi import FastAPI, Response, status
-from fastapi.responses import HTMLResponse, JSONResponse
-import sqlite3
 import os
 import time
+import sqlite3
 from datetime import datetime, date
+from fastapi import FastAPI, Response, status
+from fastapi.responses import HTMLResponse, JSONResponse
+from dotenv import load_dotenv
+
+# Загрузка переменных окружения из .env
+ENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(ENV_PATH)
 
 app = FastAPI(title="VPN Dashboard API")
 
@@ -14,10 +19,38 @@ LOCAL_HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "inde
 DEFAULT_HTML_PATH = "/var/www/2S-UI-TGbot-Dashboard/index.html"
 
 def get_html_content() -> str:
-    """Читает актуальный index.html с диска (локального или серверного)."""
+    """Читает актуальный index.html и динамически подставляет конфигурацию проекта из .env."""
     target_path = LOCAL_HTML_PATH if os.path.exists(LOCAL_HTML_PATH) else DEFAULT_HTML_PATH
     with open(target_path, "r", encoding="utf-8") as f:
-        return f.read()
+        content = f.read()
+
+    project_name = os.getenv("PROJECT_NAME", "").strip() or "Podnyatie VPN"
+    main_domain = os.getenv("MAIN_DOMAIN", "").strip() or "podnyatie.space"
+    panel_port = os.getenv("PANEL_PORT", "2096").strip() or "2096"
+    support_bot = os.getenv("SUPPORT_BOT_USERNAME", "").strip().lstrip("@") or "podnyatie_support_bot"
+    main_bot = os.getenv("BOT_USERNAME", "").strip().lstrip("@") or support_bot
+
+    # Замена конфигурации JS
+    content = content.replace('window.PROJECT_NAME = window.PROJECT_NAME || "Podnyatie VPN";', f'window.PROJECT_NAME = "{project_name}";')
+    content = content.replace('window.PANEL_DOMAIN = window.PANEL_DOMAIN || "podnyatie.space";', f'window.PANEL_DOMAIN = "{main_domain}";')
+    content = content.replace('window.PANEL_PORT = window.PANEL_PORT || "2096";', f'window.PANEL_PORT = "{panel_port}";')
+    content = content.replace('window.BOT_USERNAME = window.BOT_USERNAME || "podnyatie_vpn_bot";', f'window.BOT_USERNAME = "{main_bot}";')
+    content = content.replace('window.SUPPORT_BOT_USERNAME = window.SUPPORT_BOT_USERNAME || "podnyatie_support_bot";', f'window.SUPPORT_BOT_USERNAME = "{support_bot}";')
+
+    # Прямая замена плейсхолдеров
+    content = content.replace("{{ PROJECT_NAME }}", project_name)
+    content = content.replace("{{ BOT_USERNAME }}", main_bot)
+    content = content.replace("{{ SUPPORT_BOT_USERNAME }}", support_bot)
+
+    # Обратная совместимость с дефолтной разметкой
+    content = content.replace('<h1 id="brand-title">podnyatie.space</h1>', f'<h1 id="brand-title">{project_name}</h1>')
+    content = content.replace('<title>Настройка VPN - podnyatie.space</title>', f'<title>Настройка VPN - {project_name}</title>')
+    content = content.replace('@podnyatie_vpn_bot', f'@{main_bot}')
+    content = content.replace('https://t.me/podnyatie_vpn_bot', f'https://t.me/{main_bot}')
+    content = content.replace('@podnyatie_support_bot', f'@{support_bot}')
+    content = content.replace('https://t.me/podnyatie_support_bot', f'https://t.me/{support_bot}')
+
+    return content
 
 def format_bytes(b: int) -> str:
     """Форматирует байты в читаемый вид (Б, КБ, МБ, ГБ)."""
@@ -155,14 +188,15 @@ async def subscription_api(username: str, response: Response):
 # ----------------- ОБСЛУЖИВАНИЕ ФРОНТЕНДА -----------------
 
 def get_404_html() -> str:
-    bot_name = os.getenv("SUPPORT_BOT_USERNAME", os.getenv("BOT_USERNAME", "podnyatie_vpn_bot"))
+    bot_name = os.getenv("SUPPORT_BOT_USERNAME", os.getenv("BOT_USERNAME", "podnyatie_support_bot")).strip().lstrip("@")
     bot_link = f"https://t.me/{bot_name}" if bot_name else "#"
+    project_name = os.getenv("PROJECT_NAME", "VPN").strip() or "VPN"
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Подписка не найдена</title>
+    <title>{project_name} - Подписка не найдена</title>
     <style>
         body {{ font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
         .error-box {{ background: #1e293b; border: 1px solid #334155; padding: 32px; border-radius: 16px; text-align: center; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
@@ -175,7 +209,7 @@ def get_404_html() -> str:
     <div class="error-box">
         <h2>Ошибка 404</h2>
         <p>Такой подписки не существует. Проверьте правильность ссылки.</p>
-        <p><a href="{bot_link}">Перейти в Telegram-бот</a></p>
+        <p><a href="{bot_link}">Перейти в Telegram-бот (@{bot_name})</a></p>
     </div>
 </body>
 </html>"""
