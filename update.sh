@@ -23,18 +23,23 @@ INSTALL_DIR="/var/www/2S-UI-TGbot-Dashboard"
 
 echo -e "${CYAN}${BOLD}==> Запуск обновления 2S-UI-TGbot-Dashboard...${NC}"
 
-# Если репозиторий Git, получаем последние изменения
+SOURCE_DIR="${SCRIPT_DIR}"
 if [ -d "${SCRIPT_DIR}/.git" ]; then
     echo -e "${BLUE}[ИНФО] Получение изменений из Git...${NC}"
     cd "${SCRIPT_DIR}"
     git pull || echo -e "${YELLOW}[ВНИМАНИЕ] Не удалось выполнить git pull. Продолжаем с локальными файлами.${NC}"
+elif [ -d "/root/2S-UI-TGbot-Dashboard/.git" ]; then
+    echo -e "${BLUE}[ИНФО] Получение изменений из Git (/root/2S-UI-TGbot-Dashboard)...${NC}"
+    cd "/root/2S-UI-TGbot-Dashboard"
+    git pull || echo -e "${YELLOW}[ВНИМАНИЕ] Не удалось выполнить git pull. Продолжаем с локальными файлами.${NC}"
+    SOURCE_DIR="/root/2S-UI-TGbot-Dashboard"
 fi
 
 # Синхронизация файлов в рабочую папку
 if [ -d "${INSTALL_DIR}" ]; then
     echo -e "${BLUE}[ИНФО] Синхронизация файлов в ${INSTALL_DIR}...${NC}"
     rsync -av --exclude 'venv' --exclude '__pycache__' --exclude '.env' --exclude '*.db' --exclude '.git' \
-        "${SCRIPT_DIR}/" "${INSTALL_DIR}/"
+        "${SOURCE_DIR}/" "${INSTALL_DIR}/"
 
     # Обновление зависимостей в общем виртуальном окружении
     echo -e "${BLUE}[ИНФО] Проверка и обновление библиотек Python...${NC}"
