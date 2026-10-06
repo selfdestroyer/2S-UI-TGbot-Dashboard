@@ -2,134 +2,149 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Настройка VPN - {{ PROJECT_NAME }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0b1120;
-            --card-bg: #151f32;
-            --card-surface: #1a263d;
+            --bg-base: #0b0e14;
+            --bg-panel: #161925;
+            --bg-card: #1c1f2e;
+            --border: #2a2e3f;
+            --border-hover: #3b4054;
             --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent: #6366f1;
-            --accent-hover: #4f46e5;
-            --border: #29354d;
+            --text-muted: #8b92a5;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
             --success: #10b981;
-            --warning: #f59e0b;
             --danger: #ef4444;
-            --cyan: #06b6d4;
+            --warning: #f59e0b;
         }
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
             color: var(--text-main);
             margin: 0;
-            padding: 30px 16px;
+            padding: 14px 12px 24px 12px;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
-            line-height: 1.5;
+            line-height: 1.4;
+            -webkit-font-smoothing: antialiased;
         }
         .container {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 34px 32px;
-            max-width: 650px;
+            max-width: 680px;
             width: 100%;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.65);
-        }
-        h1 {
-            margin-top: 0;
-            font-size: 26px;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 6px;
-            letter-spacing: -0.5px;
-        }
-        p.subtitle {
-            text-align: center;
-            color: var(--text-muted);
-            margin-bottom: 24px;
-            font-size: 14px;
         }
 
-        /* Карточка статистики подписки */
-        .stats-card {
-            background: linear-gradient(145deg, rgba(26, 38, 61, 0.95), rgba(15, 23, 42, 0.98));
-            border: 1px solid rgba(99, 102, 241, 0.28);
-            border-radius: 18px;
-            padding: 22px;
-            margin-bottom: 24px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            position: relative;
+        /* Header */
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 10px;
+            padding: 0 4px;
         }
+        .header-top h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-main);
+            letter-spacing: -0.4px;
+        }
+        .header-top .subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* Panel sections */
+        .panel-section {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 13px 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+        }
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--text-main);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .section-subtitle {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        /* Stats Header */
         .stats-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 18px;
-            flex-wrap: wrap;
-            gap: 8px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
         }
         .stats-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
             font-size: 13px;
             font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
-        .stats-title .user-badge {
-            color: var(--text-main);
-            background: rgba(255, 255, 255, 0.08);
-            padding: 3px 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
-            text-transform: none;
+        .user-badge {
+            color: var(--accent-cyan);
+            font-family: 'SF Mono', monospace;
+            font-size: 12px;
+            margin-left: 6px;
         }
-        .expiry-badge {
+        .status-badge {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            background: rgba(16, 185, 129, 0.15);
+            gap: 5px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.25);
             color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.35);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
         }
-        .expiry-badge.warning {
-            background: rgba(245, 158, 11, 0.15);
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.25);
             color: var(--warning);
-            border-color: rgba(245, 158, 11, 0.35);
         }
-        .expiry-badge.expired {
-            background: rgba(239, 68, 68, 0.15);
+        .status-badge.expired {
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.25);
             color: var(--danger);
-            border-color: rgba(239, 68, 68, 0.35);
+        }
+        .status-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: currentColor;
+            box-shadow: 0 0 6px currentColor;
         }
 
-        /* Визуализация трафика */
-        .traffic-overview {
+        /* Metrics Row */
+        .metrics-row {
             display: flex;
+            gap: 14px;
+            margin-bottom: 12px;
             align-items: center;
-            gap: 22px;
-            margin-bottom: 18px;
         }
-        .circular-chart-container {
+        .chart-box {
+            width: 86px;
+            height: 86px;
             position: relative;
-            width: 104px;
-            height: 104px;
             flex-shrink: 0;
         }
         .circular-chart {
@@ -139,16 +154,17 @@
         }
         .circle-bg {
             fill: none;
-            stroke: #29354d;
-            stroke-width: 3.5;
+            stroke: #1e2233;
+            stroke-width: 5.5;
         }
         .circle-bar {
             fill: none;
-            stroke-width: 3.8;
+            stroke-width: 5.5;
             stroke-linecap: round;
             stroke-dasharray: 283;
             stroke-dashoffset: 283;
-            transition: stroke-dashoffset 1s ease-out, stroke 0.3s;
+            transition: stroke-dashoffset 0.8s ease-out;
+            filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.4));
         }
         .chart-center {
             position: absolute;
@@ -159,562 +175,504 @@
             width: 100%;
         }
         .chart-percent {
-            font-size: 22px;
+            font-size: 16px;
             font-weight: 700;
             color: var(--text-main);
             line-height: 1;
         }
         .chart-label {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-muted);
-            margin-top: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            margin-top: 3px;
         }
 
-        /* Метрики */
         .metrics-grid {
+            flex-grow: 1;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            flex-grow: 1;
+            gap: 8px;
         }
-        .metric-item {
-            background: rgba(255, 255, 255, 0.035);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 12px;
-            padding: 9px 12px;
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 7px 10px;
         }
         .metric-label {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-muted);
             margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
         .metric-value {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
+            font-family: 'SF Mono', monospace;
             color: var(--text-main);
         }
 
-        /* Полоса прогресса */
+        /* Progress Bar */
         .progress-bar-wrap {
             width: 100%;
-            height: 6px;
-            background-color: #29354d;
-            border-radius: 10px;
+            height: 4px;
+            background-color: #1e2233;
+            border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 14px;
+            margin-bottom: 10px;
         }
         .progress-bar-fill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #6366f1, #8b5cf6);
-            border-radius: 10px;
-            transition: width 1s ease-out, background 0.3s;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+            transition: width 0.8s ease-out;
         }
 
-        /* Подвал карточки статистики */
+        /* Footer & Link Box */
         .stats-footer {
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 11px;
             color: var(--text-muted);
-            padding-top: 10px;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin-bottom: 10px;
         }
         .refresh-btn {
             background: transparent;
-            border: none;
+            border: 1px solid var(--border);
             color: var(--text-muted);
-            cursor: pointer;
             padding: 3px 8px;
-            border-radius: 6px;
-            display: inline-flex;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
             align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            font-family: inherit;
+            gap: 4px;
             transition: all 0.2s;
         }
         .refresh-btn:hover {
             color: var(--text-main);
-            background: rgba(255, 255, 255, 0.05);
-        }
-        .refresh-btn svg {
-            width: 13px;
-            height: 13px;
-            transition: transform 0.6s ease;
+            border-color: var(--text-muted);
         }
         .refresh-btn.spinning svg {
             animation: spin 0.8s linear infinite;
         }
-        @keyframes spin {
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* Ссылка на подписку */
         .link-box {
-            background-color: rgba(0, 0, 0, 0.3);
+            background-color: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 8px 10px 8px 14px;
+            border-radius: 8px;
+            padding: 5px 5px 5px 10px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 24px;
+            gap: 8px;
         }
         .link-box input {
             background: transparent;
             border: none;
             color: var(--text-muted);
-            width: 100%;
-            min-width: 0;
+            flex-grow: 1;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
             outline: none;
-            font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace;
-            font-size: 13px;
-            letter-spacing: -0.2px;
+            text-overflow: ellipsis;
         }
         .copy-btn {
-            background-color: var(--border);
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border);
             color: var(--text-main);
-            border: none;
-            padding: 9px 16px;
-            border-radius: 10px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
             cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
             transition: all 0.2s;
             white-space: nowrap;
-            flex-shrink: 0;
         }
         .copy-btn:hover {
-            background-color: #3b4b6b;
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
         }
 
-        /* Заголовки секций */
-        h2 {
-            font-size: 13px;
-            margin-top: 0;
-            margin-bottom: 12px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            font-weight: 600;
-        }
-
-        /* Секция приложений */
-        .app-grid {
+        /* Service Grid (2 Columns, directly under stats for instant visibility) */
+        .service-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 14px;
-            margin-bottom: 24px;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
         }
-        .app-item {
-            background: rgba(0, 0, 0, 0.18);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 12px;
-        }
-        .app-btn, .app-action-btn {
+        .service-card {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            background-color: var(--accent);
-            color: white;
-            text-decoration: none;
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-weight: 500;
-            border: none;
-            width: 100%;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 14px;
-            box-sizing: border-box;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-        .app-btn:hover, .app-action-btn:hover {
-            background-color: var(--accent-hover);
-            transform: translateY(-1px);
-        }
-        .app-icon {
-            font-size: 18px;
-            margin-right: 10px;
-        }
-        .app-name {
-            flex-grow: 1;
-            text-align: left;
-        }
-        .platform {
-            font-size: 11px;
-            background-color: rgba(255,255,255,0.2);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .store-links {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .store-btn {
-            flex: 1;
-            text-align: center;
-            background-color: rgba(255, 255, 255, 0.05);
+            gap: 10px;
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            color: var(--text-muted);
-            padding: 7px 10px;
-            border-radius: 8px;
-            font-size: 11px;
+            border-radius: 10px;
+            padding: 10px 12px;
             text-decoration: none;
             transition: all 0.2s;
         }
-        .store-btn:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-            border-color: var(--accent);
+        .service-card:hover {
+            transform: translateY(-1px);
         }
-
-        /* Быстрые действия: Покупка и Поддержка */
-        .service-actions-section {
-            margin-top: 24px;
+        .service-card.buy {
+            background: linear-gradient(145deg, rgba(139, 92, 246, 0.08), var(--bg-card));
+            border-color: rgba(139, 92, 246, 0.25);
         }
-        .actions-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+        .service-card.buy:hover {
+            border-color: var(--accent-purple);
+            box-shadow: 0 4px 12px -2px rgba(139, 92, 246, 0.3);
         }
-        .action-card {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-decoration: none;
-            padding: 14px 16px;
-            border-radius: 14px;
-            transition: all 0.2s ease;
-            position: relative;
-            overflow: hidden;
+        .service-card.support {
+            background: linear-gradient(145deg, rgba(6, 182, 212, 0.08), var(--bg-card));
+            border-color: rgba(6, 182, 212, 0.25);
         }
-        .action-card:hover {
-            transform: translateY(-2px);
+        .service-card.support:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 4px 12px -2px rgba(6, 182, 212, 0.3);
         }
-        
-        /* Кнопка покупки */
-        .action-card.buy-card {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(168, 85, 247, 0.12));
-            border: 1px solid rgba(99, 102, 241, 0.35);
-        }
-        .action-card.buy-card:hover {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(168, 85, 247, 0.18));
-            border-color: #818cf8;
-            box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.35);
-        }
-        .action-icon-box.buy-icon {
-            background: rgba(99, 102, 241, 0.22);
-            color: #a5b4fc;
-        }
-
-        /* Кнопка поддержки */
-        .action-card.support-card {
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(14, 165, 233, 0.12));
-            border: 1px solid rgba(6, 182, 212, 0.3);
-        }
-        .action-card.support-card:hover {
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(14, 165, 233, 0.2));
-            border-color: #38bdf8;
-            box-shadow: 0 8px 20px -6px rgba(14, 165, 233, 0.3);
-        }
-        .action-icon-box.support-icon {
-            background: rgba(6, 182, 212, 0.2);
-            color: #67e8f9;
-        }
-
-        .action-icon-box {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+        .service-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
-        .action-icon-box svg {
-            width: 20px;
-            height: 20px;
+        .service-card.buy .service-icon {
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--accent-purple);
         }
-        .action-content {
+        .service-card.support .service-icon {
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-cyan);
+        }
+        .service-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+        .service-info {
             display: flex;
             flex-direction: column;
-            min-width: 0;
-            flex-grow: 1;
+            overflow: hidden;
         }
-        .action-title {
-            font-size: 13px;
+        .service-title {
+            font-size: 12px;
             font-weight: 600;
             color: var(--text-main);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .action-subtitle {
-            font-size: 11px;
+        .service-subtitle {
+            font-size: 10px;
             color: var(--text-muted);
-            margin-top: 1px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .action-arrow {
-            color: var(--text-muted);
-            opacity: 0.7;
-            transition: transform 0.2s, opacity 0.2s;
+
+        /* Vertical App Grid */
+        .app-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+        .app-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 11px 13px;
+            transition: border-color 0.2s;
+        }
+        .app-card:hover {
+            border-color: var(--border-hover);
+        }
+        .app-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 9px;
+        }
+        .app-title-group {
             display: flex;
             align-items: center;
+            gap: 8px;
         }
-        .action-card:hover .action-arrow {
-            opacity: 1;
-            transform: translateX(2px);
+        .app-icon {
+            font-size: 17px;
+            line-height: 1;
+        }
+        .app-name {
+            font-size: 14px;
+            font-weight: 600;
             color: var(--text-main);
         }
+        .app-platform {
+            font-size: 10px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 2px 7px;
+            border-radius: 4px;
+            color: var(--text-muted);
+        }
+        .app-main-action {
+            display: block;
+            width: 100%;
+            text-align: center;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            margin-bottom: 7px;
+            line-height: 1.2;
+        }
+        .app-main-action.primary {
+            background: var(--accent-purple);
+            color: white;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+        }
+        .app-main-action.primary:hover {
+            background: #7c3aed;
+        }
+        .app-main-action.cyan {
+            background: var(--accent-cyan);
+            color: #0b0e14;
+            box-shadow: 0 2px 8px rgba(6, 182, 212, 0.25);
+        }
+        .app-main-action.cyan:hover {
+            background: #0891b2;
+            color: white;
+        }
+        .app-main-action.green {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+        }
+        .app-main-action.green:hover {
+            background: #059669;
+        }
 
+        .app-store-links {
+            display: flex;
+            gap: 6px;
+        }
+        .app-store-btn {
+            flex: 1;
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 5px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-panel);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .app-store-btn:hover {
+            color: var(--text-main);
+            border-color: var(--text-muted);
+        }
+
+        /* Error box */
         #error-msg {
             display: none;
-            text-align: center;
-            color: #ef4444;
+            color: var(--danger);
+            padding: 12px;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
             background: rgba(239, 68, 68, 0.1);
-            padding: 16px;
-            border-radius: 14px;
-            margin-bottom: 24px;
-            font-size: 14px;
-        }
-        .footer {
-            margin-top: 26px;
-            text-align: center;
+            margin-bottom: 14px;
             font-size: 12px;
-            color: var(--text-muted);
-            line-height: 1.6;
-        }
-
-        /* SVG градиенты */
-        svg.defs-only {
-            display: block;
-            width: 0;
-            height: 0;
-        }
-
-        /* Мобильная адаптивность */
-        @media (max-width: 520px) {
-            .container {
-                padding: 24px 18px;
-            }
-            .link-box input {
-                font-size: 11.5px;
-            }
-            .actions-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-            .traffic-overview {
-                gap: 14px;
-            }
-            .circular-chart-container {
-                width: 90px;
-                height: 90px;
-            }
-            .chart-percent {
-                font-size: 19px;
-            }
         }
     </style>
 </head>
 <body>
-
-    <!-- Вспомогательные градиенты для кругового индикатора -->
-    <svg class="defs-only" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <linearGradient id="gradient-normal" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#6366f1" />
-                <stop offset="100%" stop-color="#10b981" />
-            </linearGradient>
-            <linearGradient id="gradient-warning" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#f59e0b" />
-                <stop offset="100%" stop-color="#ea580c" />
-            </linearGradient>
-            <linearGradient id="gradient-danger" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#ef4444" />
-                <stop offset="100%" stop-color="#b91c1c" />
-            </linearGradient>
-        </defs>
-    </svg>
-
     <div class="container">
-        <h1 id="brand-title">{{ PROJECT_NAME }}</h1>
-        <p class="subtitle">Установка конфигурации VPN</p>
-
+        <div class="header-top">
+            <h1 id="brand-title">{{ PROJECT_NAME }}</h1>
+            <p class="subtitle">Панель управления подпиской</p>
+        </div>
+        
         <div id="error-msg">
             Ошибка: Ссылка на подписку не найдена. Убедитесь, что вы перешли по правильной ссылке.
         </div>
 
         <div id="main-content">
-            <!-- Карточка статистики подписки -->
-            <div class="stats-card" id="stats-card" style="display: none;">
+            <!-- 1. Stats Section -->
+            <div class="panel-section" id="stats-card" style="display:none;">
                 <div class="stats-header">
-                    <div class="stats-title">
-                        <span>Подписка:</span>
-                        <span class="user-badge" id="stats-username">-</span>
-                    </div>
-                    <div class="expiry-badge" id="expiry-badge">
-                        <span id="expiry-icon">🛡️</span>
+                    <div class="stats-title">Client <span class="user-badge" id="stats-username">-</span></div>
+                    <div class="status-badge" id="expiry-badge">
+                        <div class="status-dot"></div>
                         <span id="expiry-text">Загрузка...</span>
                     </div>
                 </div>
 
-                <div class="traffic-overview">
-                    <!-- Круговой индикатор -->
-                    <div class="circular-chart-container">
+                <div class="metrics-row">
+                    <div class="chart-box">
                         <svg viewBox="0 0 100 100" class="circular-chart">
+                            <defs>
+                                <linearGradient id="circle-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#06b6d4" />
+                                    <stop offset="100%" stop-color="#8b5cf6" />
+                                </linearGradient>
+                                <linearGradient id="gradient-warning" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#8b5cf6" />
+                                    <stop offset="100%" stop-color="#f59e0b" />
+                                </linearGradient>
+                                <linearGradient id="gradient-danger" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#f59e0b" />
+                                    <stop offset="100%" stop-color="#ef4444" />
+                                </linearGradient>
+                            </defs>
                             <circle class="circle-bg" cx="50" cy="50" r="45"></circle>
                             <circle class="circle-bar" id="circle-progress" cx="50" cy="50" r="45"></circle>
                         </svg>
                         <div class="chart-center">
                             <div class="chart-percent" id="chart-percent-text">0%</div>
-                            <div class="chart-label">трафик</div>
+                            <div class="chart-label">Трафик</div>
                         </div>
                     </div>
 
-                    <!-- Цифровые метрики -->
                     <div class="metrics-grid">
-                        <div class="metric-item">
-                            <div class="metric-label">Израсходовано</div>
-                            <div class="metric-value" id="metric-used">0 ГБ</div>
+                        <div class="metric-card">
+                            <div class="metric-label">Использовано</div>
+                            <div class="metric-value" id="metric-used">0 GB</div>
                         </div>
-                        <div class="metric-item">
+                        <div class="metric-card">
                             <div class="metric-label">Осталось</div>
                             <div class="metric-value" id="metric-remaining">-</div>
                         </div>
-                        <div class="metric-item">
+                        <div class="metric-card">
                             <div class="metric-label">Лимит</div>
                             <div class="metric-value" id="metric-total">-</div>
                         </div>
-                        <div class="metric-item">
+                        <div class="metric-card">
                             <div class="metric-label">Сброс трафика</div>
                             <div class="metric-value" id="metric-reset">-</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Линейная шкала -->
                 <div class="progress-bar-wrap">
                     <div class="progress-bar-fill" id="linear-progress-fill"></div>
                 </div>
 
-                <!-- Подвал со статусом обновления -->
                 <div class="stats-footer">
                     <span id="stats-updated-time">Обновляется раз в час</span>
-                    <button class="refresh-btn" id="btn-refresh-stats" onclick="manualRefreshStats()" title="Обновить статистику">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M23 4v6h-6M1 20v-6h6"></path>
-                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                        </svg>
-                        <span>Обновить</span>
+                    <button class="refresh-btn" id="btn-refresh-stats" onclick="manualRefreshStats()">
+                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Обновить
                     </button>
-                </div>
-            </div>
-
-            <!-- Блок ссылки на подписку -->
-            <div class="link-box">
-                <input type="text" id="sub-url" readonly value="Загрузка..." onclick="this.select()" title="Ссылка на подписку">
-                <button class="copy-btn" onclick="copyLink()" id="copy-btn">Копировать</button>
-            </div>
-
-            <!-- Установка в приложения -->
-            <h2>Установка в один клик</h2>
-            <div class="app-grid">
-                <!-- Throne -->
-                <div class="app-item">
-                    <button class="app-action-btn" onclick="copyForThrone()">
-                        <span class="app-icon">👑</span>
-                        <span class="app-name">Throne (скопировать для ПК)</span>
-                        <span class="platform">PC</span>
-                    </button>
-                    <div class="store-links">
-                        <a href="https://github.com/throneproj/throne/releases" target="_blank" class="store-btn">GitHub (Releases)</a>
-                    </div>
                 </div>
                 
-                <!-- Hiddify -->
-                <div class="app-item">
-                    <a href="#" class="app-btn" id="btn-hiddify">
-                        <span class="app-icon">⚡</span>
-                        <span class="app-name">Hiddify</span>
-                        <span class="platform">Mobile / PC</span>
-                    </a>
-                    <div class="store-links">
-                        <a href="https://play.google.com/store/apps/details?id=app.hiddify.com" target="_blank" class="store-btn">Google Play</a>
-                        <a href="https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532" target="_blank" class="store-btn">App Store</a>
-                    </div>
-                </div>
-
-                <!-- Incy -->
-                <div class="app-item">
-                    <a href="#" class="app-btn" id="btn-incy">
-                        <span class="app-icon">🛡️</span>
-                        <span class="app-name">Incy</span>
-                        <span class="platform">Mobile</span>
-                    </a>
-                    <div class="store-links">
-                        <a href="https://play.google.com/store/apps/details?id=llc.itdev.incy&hl=ru" target="_blank" class="store-btn">Google Play</a>
-                        <a href="https://apps.apple.com/app/incy/id6756943388" target="_blank" class="store-btn">App Store</a>
-                    </div>
+                <div class="link-box">
+                    <input type="text" id="sub-url" readonly value="Загрузка..." onclick="this.select()">
+                    <button class="copy-btn" onclick="copyLink()" id="copy-btn">Копировать</button>
                 </div>
             </div>
 
-            <!-- Сервис и поддержка -->
-            <div class="service-actions-section">
-                <h2>Сервис и поддержка</h2>
-                <div class="actions-grid">
-                    <!-- Кнопка покупки/продления -->
-                    <a href="https://t.me/{{ BOT_USERNAME }}" target="_blank" class="action-card buy-card" id="buy-link">
-                        <div class="action-icon-box buy-icon">
+            <!-- 2. Service & Support (Расположен сразу под статистикой — виден без лишнего скролла!) -->
+            <div class="panel-section">
+                <h2 class="section-title">Сервис и поддержка <span class="section-subtitle">Telegram</span></h2>
+                <div class="service-grid">
+                    <a href="https://t.me/{{ BOT_USERNAME }}" target="_blank" class="service-card buy" id="buy-link">
+                        <div class="service-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="2" y="5" width="20" height="14" rx="3" ry="3"></rect>
                                 <line x1="2" y1="10" x2="22" y2="10"></line>
                             </svg>
                         </div>
-                        <div class="action-content">
-                            <span class="action-title">Купить / Продлить</span>
-                            <span class="action-subtitle" id="buy-subtitle">@{{ BOT_USERNAME }}</span>
-                        </div>
-                        <div class="action-arrow">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
+                        <div class="service-info">
+                            <span class="service-title">Продление</span>
+                            <span class="service-subtitle" id="buy-subtitle">@{{ BOT_USERNAME }}</span>
                         </div>
                     </a>
-
-                    <!-- Кнопка поддержки -->
-                    <a href="https://t.me/{{ SUPPORT_BOT_USERNAME }}" target="_blank" class="action-card support-card" id="support-link">
-                        <div class="action-icon-box support-icon">
+                    
+                    <a href="https://t.me/{{ SUPPORT_BOT_USERNAME }}" target="_blank" class="service-card support" id="support-link">
+                        <div class="service-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
                             </svg>
                         </div>
-                        <div class="action-content">
-                            <span class="action-title">Поддержка</span>
-                            <span class="action-subtitle" id="support-subtitle">@{{ SUPPORT_BOT_USERNAME }}</span>
-                        </div>
-                        <div class="action-arrow">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
+                        <div class="service-info">
+                            <span class="service-title">Поддержка</span>
+                            <span class="service-subtitle" id="support-subtitle">@{{ SUPPORT_BOT_USERNAME }}</span>
                         </div>
                     </a>
                 </div>
             </div>
-        </div>
 
-        <div class="footer">
-            Для Throne скопируйте ссылку и нажмите Ctrl+V в окне программы.
+            <!-- 3. Quick Connect (Apps) -->
+            <div class="panel-section">
+                <h2 class="section-title">Быстрое подключение <span class="section-subtitle">Клиенты</span></h2>
+                <div class="app-grid">
+                    <!-- Throne -->
+                    <div class="app-card">
+                        <div class="app-card-header">
+                            <div class="app-title-group">
+                                <span class="app-icon">👑</span>
+                                <span class="app-name">Throne</span>
+                            </div>
+                            <span class="app-platform">PC</span>
+                        </div>
+                        <button class="app-main-action primary" onclick="copyForThrone()">
+                            Скопировать для приложения
+                        </button>
+                        <div class="app-store-links">
+                            <a href="https://github.com/throneproj/throne/releases" target="_blank" class="app-store-btn">Скачать с GitHub</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Hiddify -->
+                    <div class="app-card">
+                        <div class="app-card-header">
+                            <div class="app-title-group">
+                                <span class="app-icon">⚡</span>
+                                <span class="app-name">Hiddify</span>
+                            </div>
+                            <span class="app-platform">Mobile</span>
+                        </div>
+                        <a href="#" id="btn-hiddify" class="app-main-action cyan">
+                            Импортировать
+                        </a>
+                        <div class="app-store-links">
+                            <a href="https://play.google.com/store/apps/details?id=app.hiddify.com" target="_blank" class="app-store-btn">Android</a>
+                            <a href="https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532" target="_blank" class="app-store-btn">iOS</a>
+                        </div>
+                    </div>
+
+                    <!-- Incy -->
+                    <div class="app-card">
+                        <div class="app-card-header">
+                            <div class="app-title-group">
+                                <span class="app-icon">🛡️</span>
+                                <span class="app-name">Incy</span>
+                            </div>
+                            <span class="app-platform">Mobile</span>
+                        </div>
+                        <a href="#" id="btn-incy" class="app-main-action green">
+                            Импортировать
+                        </a>
+                        <div class="app-store-links">
+                            <a href="https://play.google.com/store/apps/details?id=llc.itdev.incy&hl=ru" target="_blank" class="app-store-btn">Android</a>
+                            <a href="https://apps.apple.com/app/incy/id6756943388" target="_blank" class="app-store-btn">iOS</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -732,7 +690,7 @@
             : (currentHost ? currentHost.replace(/^sub\./i, '') : "");
         const panelPort = window.PANEL_PORT || "2096";
 
-        // Название проекта на странице (приоритет: PROJECT_NAME -> текст brand-title -> rootDomain)
+        // Название проекта на странице
         const brandEl = document.getElementById("brand-title");
         const initialBrand = (brandEl && brandEl.textContent && !brandEl.textContent.includes("{{")) ? brandEl.textContent.trim() : "";
         const projectName = (window.PROJECT_NAME && !window.PROJECT_NAME.includes("{{")) 
@@ -773,7 +731,6 @@
 
         if (subPath && subPath !== "/") {
             const cleanPath = subPath.startsWith('/') ? subPath : '/' + subPath;
-            // Прямая ссылка на подписку в панели: https://домен_пользователя:2096/sub/имя_пользователя
             const subBase = (window.PANEL_SUB_URL || ("https://" + rootDomain + ":" + panelPort + "/sub")).replace(/\/+$/, '');
             const fullSubUrl = subBase + cleanPath;
             
@@ -797,10 +754,13 @@
                 const btn = document.getElementById('copy-btn');
                 btn.innerText = "Скопировано!";
                 btn.style.backgroundColor = "var(--success)";
+                btn.style.borderColor = "var(--success)";
                 btn.style.color = "white";
                 setTimeout(() => {
                     btn.innerText = "Копировать";
-                    btn.style.backgroundColor = "var(--border)";
+                    btn.style.backgroundColor = "var(--bg-panel)";
+                    btn.style.borderColor = "var(--border)";
+                    btn.style.color = "var(--text-main)";
                 }, 2000);
             });
         }
@@ -828,7 +788,6 @@
                     const cached = JSON.parse(cachedRaw);
                     const age = Date.now() - cached.timestamp;
                     if (age < CACHE_TTL_MS) {
-                        // Используем кэш, если он моложе 1 часа
                         renderStats(cached.data);
                         updateAgeLabel(cached.timestamp);
                         setupPeriodicRefresh(user);
@@ -839,13 +798,11 @@
                 }
             }
 
-            // Если кэша нет или он старше 1 часа — запрашиваем с сервера
             fetchStats(user);
             setupPeriodicRefresh(user);
         }
 
         function setupPeriodicRefresh(user) {
-            // Регулярное обновление раз в час (3600000 мс)
             setInterval(() => {
                 fetchStats(user, false);
             }, CACHE_TTL_MS);
@@ -856,7 +813,6 @@
             if (isManual) refreshBtn.classList.add('spinning');
 
             try {
-                // Если ручной запрос — добавляем timestamp для обхода браузерного кэша
                 const url = `/api/subscription/${encodeURIComponent(user)}` + (isManual ? `?t=${Date.now()}` : '');
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -864,7 +820,6 @@
                 }
                 const data = await response.json();
 
-                // Сохраняем в localStorage на 1 час
                 const cachePayload = {
                     timestamp: Date.now(),
                     data: data
@@ -889,39 +844,31 @@
         }
 
         function renderStats(data) {
-            // 1. Статус и срок окончания подписки
             const expiryBadge = document.getElementById('expiry-badge');
             const expiryText = document.getElementById('expiry-text');
-            const expiryIcon = document.getElementById('expiry-icon');
 
             if (!data.enable || data.is_expired) {
-                expiryBadge.className = 'expiry-badge expired';
-                expiryIcon.textContent = '⚠️';
+                expiryBadge.className = 'status-badge expired';
                 expiryText.textContent = data.is_expired ? 'Истекла' : 'Отключена';
             } else if (data.is_unlimited_expiry) {
-                expiryBadge.className = 'expiry-badge';
-                expiryIcon.textContent = '♾️';
+                expiryBadge.className = 'status-badge';
                 expiryText.textContent = 'Бессрочно';
             } else {
                 const days = data.days_left;
                 if (days !== null && days <= 5) {
-                    expiryBadge.className = 'expiry-badge warning';
-                    expiryIcon.textContent = '⏳';
+                    expiryBadge.className = 'status-badge warning';
                 } else {
-                    expiryBadge.className = 'expiry-badge';
-                    expiryIcon.textContent = '🛡️';
+                    expiryBadge.className = 'status-badge';
                 }
                 const daysStr = days !== null ? ` (ост. ${days} дн.)` : '';
                 expiryText.textContent = `До ${data.expiry_formatted}${daysStr}`;
             }
 
-            // 2. Метрики трафика
             document.getElementById('metric-used').textContent = data.used_formatted;
             document.getElementById('metric-remaining').textContent = data.remaining_formatted;
             document.getElementById('metric-total').textContent = data.volume_formatted;
             document.getElementById('metric-reset').textContent = data.next_reset_formatted || '—';
 
-            // 3. Круговой график и прогресс-бар
             const percent = data.is_unlimited_traffic ? 0 : data.used_percent;
             const circleBar = document.getElementById('circle-progress');
             const linearBar = document.getElementById('linear-progress-fill');
@@ -929,29 +876,27 @@
 
             if (data.is_unlimited_traffic) {
                 percentText.textContent = '∞';
-                circleBar.style.stroke = 'url(#gradient-normal)';
+                circleBar.style.stroke = 'url(#circle-gradient)';
                 circleBar.style.strokeDashoffset = 0;
                 linearBar.style.width = '100%';
-                linearBar.style.background = 'var(--accent)';
+                linearBar.style.background = 'var(--accent-cyan)';
             } else {
                 percentText.textContent = `${Math.round(percent)}%`;
 
-                // Выбор цвета в зависимости от порога
-                let gradientUrl = 'url(#gradient-normal)';
-                let barColor = 'linear-gradient(90deg, #6366f1, #10b981)';
+                let gradientUrl = 'url(#circle-gradient)';
+                let barColor = 'linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))';
 
                 if (percent >= 90) {
                     gradientUrl = 'url(#gradient-danger)';
-                    barColor = 'linear-gradient(90deg, #f59e0b, #ef4444)';
+                    barColor = 'linear-gradient(90deg, var(--warning), var(--danger))';
                 } else if (percent >= 70) {
                     gradientUrl = 'url(#gradient-warning)';
-                    barColor = 'linear-gradient(90deg, #6366f1, #f59e0b)';
+                    barColor = 'linear-gradient(90deg, var(--accent-purple), var(--warning))';
                 }
 
                 circleBar.style.stroke = gradientUrl;
                 linearBar.style.background = barColor;
 
-                // Расчет смещения дуги окружности
                 const offset = CIRCLE_CIRCUMFERENCE - (CIRCLE_CIRCUMFERENCE * (percent / 100));
                 circleBar.style.strokeDashoffset = offset;
                 linearBar.style.width = `${percent}%`;
