@@ -193,26 +193,135 @@ def get_404_html() -> str:
     has_valid_bot = bot_name and bot_name != "your_support_bot"
     bot_link = f"https://t.me/{bot_name}" if has_valid_bot else "#"
     bot_label = f" (@{bot_name})" if has_valid_bot else ""
-    project_name = os.getenv("PROJECT_NAME", "VPN").strip() or "VPN"
+    project_name = os.getenv("PROJECT_NAME", "VPN Service").strip() or "VPN Service"
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{project_name} - Подписка не найдена</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {{ font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
-        .error-box {{ background: #1e293b; border: 1px solid #334155; padding: 32px; border-radius: 16px; text-align: center; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
-        h2 {{ color: #ef4444; margin-top: 0; font-size: 20px; }}
-        p {{ color: #94a3b8; font-size: 14px; line-height: 1.5; }}
-        a {{ color: #6366f1; text-decoration: none; font-weight: 500; }}
+        :root {{
+            --bg-base: #0b0e14;
+            --bg-panel: #161925;
+            --bg-card: #1c1f2e;
+            --border: #2a2e3f;
+            --text-main: #f8fafc;
+            --text-muted: #8b92a5;
+            --accent-cyan: #06b6d4;
+            --danger: #ef4444;
+        }}
+        * {{ box-sizing: border-box; }}
+        body {{
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            line-height: 1.4;
+            -webkit-font-smoothing: antialiased;
+        }}
+        .error-card {{
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+        }}
+        .brand {{
+            font-size: 19px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 3px;
+            letter-spacing: -0.4px;
+        }}
+        .brand-sub {{
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }}
+        .status-badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: var(--danger);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 14px;
+        }}
+        .status-dot {{
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: currentColor;
+            box-shadow: 0 0 6px currentColor;
+        }}
+        .error-title {{
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0 0 8px 0;
+        }}
+        .error-desc {{
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0 0 22px 0;
+        }}
+        .btn-bot {{
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent-cyan);
+            color: #0b0e14;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 2px 10px rgba(6, 182, 212, 0.3);
+            width: 100%;
+        }}
+        .btn-bot:hover {{
+            background: #0891b2;
+            color: white;
+            transform: translateY(-1px);
+        }}
+        .btn-bot svg {{
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }}
     </style>
 </head>
 <body>
-    <div class="error-box">
-        <h2>Ошибка 404</h2>
-        <p>Такой подписки не существует. Проверьте правильность ссылки.</p>
-        <p><a href="{bot_link}">Перейти в Telegram-бот{bot_label}</a></p>
+    <div class="error-card">
+        <div class="brand">{project_name}</div>
+        <div class="brand-sub">Панель управления подпиской</div>
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            Ошибка 404
+        </div>
+        <h2 class="error-title">Подписка не найдена</h2>
+        <p class="error-desc">Пользователь с такой ссылкой не найден в системе. Проверьте правильность адреса или перейдите в Telegram-бот для управления подпиской.</p>
+        <a href="{bot_link}" class="btn-bot">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+            Перейти в Telegram-бот{bot_label}
+        </a>
     </div>
 </body>
 </html>"""
