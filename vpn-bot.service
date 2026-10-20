@@ -1,12 +1,13 @@
+# Шаблон: install.sh подставляет свои пути и добавляет Environment=TZ=<часовой пояс>
 [Unit]
 Description=Telegram VPN Subscriptions Bot
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 User=vpnbot
 Group=vpnbot
 WorkingDirectory=/var/www/2S-UI-TGbot-Dashboard
-EnvironmentFile=-/var/www/2S-UI-TGbot-Dashboard/.env
 ExecStart=/var/www/2S-UI-TGbot-Dashboard/venv/bin/python bot.py
 Restart=always
 RestartSec=5
@@ -20,6 +21,7 @@ PrivateTmp=true
 # capability; саму базу бот открывает с mode=ro.
 AmbientCapabilities=CAP_DAC_OVERRIDE
 CapabilityBoundingSet=CAP_DAC_OVERRIDE
+# bot_data.db и её журнал лежат в папке проекта
 ReadWritePaths=/usr/local/s-ui/db /var/www/2S-UI-TGbot-Dashboard
 
 [Install]

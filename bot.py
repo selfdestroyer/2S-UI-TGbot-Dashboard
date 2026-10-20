@@ -70,32 +70,42 @@ class BroadcastState(StatesGroup):
     waiting_for_delete_time = State()
     waiting_for_confirmation = State()
 
-TARIFFS = {
-    "1m": {
-        "title": "1 месяц",
-        "price": 200,
-        "button": "1 месяц — 200 ₽",
-        "discount": None,
-    },
-    "3m": {
-        "title": "3 месяца",
-        "price": 570,
-        "button": "3 месяца — 570 ₽ (-5%)",
-        "discount": "скидка 5%",
-    },
-    "6m": {
-        "title": "6 месяцев",
-        "price": 1080,
-        "button": "6 месяцев — 1080 ₽ (-10%)",
-        "discount": "скидка 10%",
-    },
-    "12m": {
-        "title": "12 месяцев",
-        "price": 2000,
-        "button": "12 месяцев — 2000 ₽ (-15%)",
-        "discount": "скидка 15%",
-    },
-}
+DEFAULT_TARIFFS = "1:200,3:570:5,6:1080:10,12:2000:15"
+
+def _months_title(months: int) -> str:
+    if months % 10 == 1 and months % 100 != 11:
+        word = "месяц"
+    elif months % 10 in (2, 3, 4) and months % 100 not in (12, 13, 14):
+        word = "месяца"
+    else:
+        word = "месяцев"
+    return f"{months} {word}"
+
+def parse_tariffs(raw: str) -> dict:
+    """Разбирает строку тарифов вида 'месяцы:цена[:скидка%],...'."""
+    tariffs = {}
+    for item in raw.split(","):
+        if not item.strip():
+            continue
+        parts = [p.strip() for p in item.split(":")]
+        months, price = int(parts[0]), int(parts[1])
+        discount = int(parts[2]) if len(parts) > 2 and parts[2] else 0
+        title = _months_title(months)
+        tariffs[f"{months}m"] = {
+            "title": title,
+            "price": price,
+            "button": f"{title} — {price} ₽" + (f" (-{discount}%)" if discount else ""),
+            "discount": f"скидка {discount}%" if discount else None,
+        }
+    if not tariffs:
+        raise ValueError("пустой список тарифов")
+    return tariffs
+
+try:
+    TARIFFS = parse_tariffs(os.getenv("TARIFFS", "").strip() or DEFAULT_TARIFFS)
+except (ValueError, IndexError) as e:
+    print(f"Ошибка в TARIFFS ({e}), используются тарифы по умолчанию")
+    TARIFFS = parse_tariffs(DEFAULT_TARIFFS)
 
 logging.basicConfig(level=logging.INFO)
 
