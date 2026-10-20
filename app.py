@@ -2,6 +2,7 @@ import os
 import re
 import time
 import sqlite3
+from urllib.parse import quote
 from datetime import datetime, date
 from fastapi import FastAPI, Response, status
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -15,6 +16,10 @@ app = FastAPI(title="VPN Dashboard API")
 
 # Пути к БД и HTML файлу с поддержкой переменных окружения и локального запуска
 DB_PATH = os.getenv("DB_PATH", "/usr/local/s-ui/db/s-ui.db")
+
+def connect_panel_db() -> sqlite3.Connection:
+    """Открывает базу панели 2S-UI только на чтение."""
+    return sqlite3.connect(f"file:{quote(DB_PATH)}?mode=ro", uri=True)
 
 LOCAL_HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
 DEFAULT_HTML_PATH = "/var/www/2S-UI-TGbot-Dashboard/index.html"
@@ -43,14 +48,6 @@ def get_html_content() -> str:
     content = content.replace("{{ BOT_USERNAME }}", main_bot)
     content = content.replace("{{ SUPPORT_BOT_USERNAME }}", support_bot)
 
-    # Обратная совместимость с устаревшей дефолтной разметкой
-    content = content.replace('<h1 id="brand-title">podnyatie.space</h1>', f'<h1 id="brand-title">{project_name}</h1>')
-    content = content.replace('<title>Настройка VPN - podnyatie.space</title>', f'<title>Настройка VPN - {project_name}</title>')
-    content = content.replace('@podnyatie_vpn_bot', f'@{main_bot}')
-    content = content.replace('https://t.me/podnyatie_vpn_bot', f'https://t.me/{main_bot}')
-    content = content.replace('@podnyatie_support_bot', f'@{support_bot}')
-    content = content.replace('https://t.me/podnyatie_support_bot', f'https://t.me/{support_bot}')
-
     return content
 
 def format_bytes(b: int) -> str:
@@ -75,7 +72,7 @@ def get_client_stats(username: str) -> dict | None:
         return None
 
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = connect_panel_db()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -160,7 +157,7 @@ def check_user_exists(username: str) -> bool:
     if not os.path.exists(DB_PATH):
         return False
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = connect_panel_db()
         cursor = conn.cursor()
         cursor.execute("SELECT 1 FROM clients WHERE name = ? LIMIT 1", (username,))
         row = cursor.fetchone()

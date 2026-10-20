@@ -1,7 +1,9 @@
 import os
 import re
+import html
 import time
 import sqlite3
+from urllib.parse import quote
 import asyncio
 import logging
 from datetime import datetime
@@ -20,6 +22,11 @@ load_dotenv(ENV_PATH)
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_TG_ID = int(os.getenv("ADMIN_TG_ID", "0"))
 DB_PATH = os.getenv("DB_PATH", "/usr/local/s-ui/db/s-ui.db")
+
+def connect_panel_db() -> sqlite3.Connection:
+    """Открывает базу панели 2S-UI только на чтение."""
+    return sqlite3.connect(f"file:{quote(DB_PATH)}?mode=ro", uri=True)
+
 _raw_sub_domain = os.getenv("SUB_DOMAIN", "sub.example.com").strip().rstrip('/')
 if _raw_sub_domain.startswith("https://"):
     SUB_DOMAIN = _raw_sub_domain[8:]
@@ -109,7 +116,7 @@ def get_main_menu_text(full_name: str) -> str:
     return (
         f"🚀 <b>{PROJECT_NAME}</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"👋 Привет, <b>{full_name}</b>!\n\n"
+        f"👋 Привет, <b>{html.escape(full_name)}</b>!\n\n"
         "Добро пожаловать в сервис быстрого и свободного интернета без цензуры и замедлений.\n\n"
         "⚡ <b>Протоколы:</b> Hysteria2, TUIC, VLESS\n"
         "📱 <b>До 2 устройств</b> на одну подписку\n"
@@ -228,7 +235,7 @@ async def handle_receipt_media(message: types.Message, state: FSMContext):
         f"💳 <b>Новая заявка на оплату!</b>\n\n"
         f" Тариф: <b>{tariff_title} — {tariff_price} ₽</b>\n"
         f"📱 Устройств: <b>2</b> | 🚀 Трафик: <b>250 ГБ/мес</b>\n"
-        f"👤 Пользователь: {full_name} ({user_mention})\n"
+        f"👤 Пользователь: {html.escape(full_name)} ({user_mention})\n"
         f"🆔 Telegram ID: <code>{user_id}</code>\n\n"
         "Проверьте поступление средств и выберите действие:"
     )
@@ -287,10 +294,10 @@ async def cb_admin_approve_sub(callback: types.CallbackQuery):
     
     try:
         if callback.message.caption:
-            new_caption = callback.message.caption + "\n\n<b>Статус:</b> ✅ ОДОБРЕНО"
+            new_caption = callback.message.html_text + "\n\n<b>Статус:</b> ✅ ОДОБРЕНО"
             await callback.message.edit_caption(caption=new_caption, reply_markup=None, parse_mode="HTML")
         else:
-            new_text = callback.message.text + "\n\n<b>Статус:</b> ✅ ОДОБРЕНО"
+            new_text = callback.message.html_text + "\n\n<b>Статус:</b> ✅ ОДОБРЕНО"
             await callback.message.edit_text(text=new_text, reply_markup=None, parse_mode="HTML")
     except Exception as e:
         logging.error(f"Ошибка редактирования сообщения админа: {e}")
@@ -324,10 +331,10 @@ async def cb_admin_reject_sub(callback: types.CallbackQuery):
     
     try:
         if callback.message.caption:
-            new_caption = callback.message.caption + "\n\n<b>Статус:</b> ❌ ОТКЛОНЕНО"
+            new_caption = callback.message.html_text + "\n\n<b>Статус:</b> ❌ ОТКЛОНЕНО"
             await callback.message.edit_caption(caption=new_caption, reply_markup=None, parse_mode="HTML")
         else:
-            new_text = callback.message.text + "\n\n<b>Статус:</b> ❌ ОТКЛОНЕНО"
+            new_text = callback.message.html_text + "\n\n<b>Статус:</b> ❌ ОТКЛОНЕНО"
             await callback.message.edit_text(text=new_text, reply_markup=None, parse_mode="HTML")
     except Exception as e:
         logging.error(f"Ошибка редактирования сообщения админа: {e}")
@@ -358,7 +365,7 @@ async def cb_my_subscription(callback: types.CallbackQuery):
     if subs:
         # Успешный кейс: подписка найдена
         links_text = "\n".join([
-            f"🔗 {s['name']} ({s['date_str']}" + (f", сброс: {s['reset_str']}" if s.get("reset_str") else "") + f"): https://{SUB_DOMAIN}/{s['name']}"
+            f"🔗 {html.escape(s['name'])} ({s['date_str']}" + (f", сброс: {s['reset_str']}" if s.get("reset_str") else "") + f"): https://{SUB_DOMAIN}/{html.escape(s['name'])}"
             for s in subs
         ])
         
@@ -367,7 +374,7 @@ async def cb_my_subscription(callback: types.CallbackQuery):
             await bot.send_message(
                 ADMIN_TG_ID,
                 f"✅ <b>Успешный запрос подписки:</b>\n"
-                f"👤 Пользователь: {full_name} ({user_mention})\n"
+                f"👤 Пользователь: {html.escape(full_name)} ({user_mention})\n"
                 f"🆔 Telegram ID: <code>{user_id}</code>\n"
                 f"📦 Найдено подписок: {len(subs)}\n\n"
                 f"{links_text}",
@@ -407,7 +414,7 @@ async def cb_my_subscription(callback: types.CallbackQuery):
             await bot.send_message(
                 ADMIN_TG_ID,
                 f"⚠️ <b>Попытка доступа без подписки:</b>\n"
-                f"👤 Пользователь: {full_name} ({user_mention})\n"
+                f"👤 Пользователь: {html.escape(full_name)} ({user_mention})\n"
                 f"🆔 Telegram ID: <code>{user_id}</code>\n"
                 f"<i>Его ID не найден в базе панели.</i>",
                 parse_mode="HTML"
@@ -551,12 +558,12 @@ async def check_and_send_expiry_notifications():
         return
 
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = connect_panel_db()
         cursor = conn.cursor()
         cursor.execute("""
             SELECT name, desc, remark, tg_id, expiry, enable
             FROM clients
-            WHERE enable = 1 AND expiry > 0
+            WHERE expiry > 0
         """)
         clients = cursor.fetchall()
         conn.close()
@@ -572,6 +579,7 @@ async def check_and_send_expiry_notifications():
         remark = row[2]
         tg_id_raw = row[3]
         expiry_raw = int(row[4] or 0)
+        enabled = bool(row[5])
 
         if expiry_raw <= 0:
             continue
@@ -597,10 +605,16 @@ async def check_and_send_expiry_notifications():
         if not notif_type:
             continue
 
+        # Панель отключает клиента сразу по истечении срока, поэтому для "expired"
+        # отключенных не пропускаем; остальные напоминания — только активным.
+        if not enabled and notif_type != "expired":
+            continue
+
         # Проверяем, не отправляли ли уже такое уведомление для текущего периода
         if is_notification_sent(name, notif_type, expiry_ts):
             continue
 
+        safe_name = html.escape(name)
         expiry_dt = datetime.fromtimestamp(expiry_ts)
         date_str = expiry_dt.strftime("%d.%m.%Y")
         time_str = expiry_dt.strftime("%H:%M")
@@ -610,7 +624,7 @@ async def check_and_send_expiry_notifications():
             text = (
                 f"⏳ <b>Напоминание: подписка заканчивается через 7 дней</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"👋 Здравствуйте! Напоминаем, что действие вашей VPN-подписки <b>{name}</b> истекает:\n"
+                f"👋 Здравствуйте! Напоминаем, что действие вашей VPN-подписки <b>{safe_name}</b> истекает:\n"
                 f"📅 <b>{date_str}</b>\n\n"
                 f"Вы можете продлить доступ заранее — при оплате новые дни прибавятся к текущему сроку!\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -626,7 +640,7 @@ async def check_and_send_expiry_notifications():
             text = (
                 f"⚠️ <b>Внимание: до окончания подписки осталось 3 дня!</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"Срок действия вашей VPN-подписки <b>{name}</b> заканчивается:\n"
+                f"Срок действия вашей VPN-подписки <b>{safe_name}</b> заканчивается:\n"
                 f"📅 <b>{date_str}</b>\n\n"
                 f"Чтобы интернет оставался быстрым и защищенным без перерывов в работе, рекомендуем продлить доступ прямо сейчас.\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -643,7 +657,7 @@ async def check_and_send_expiry_notifications():
             text = (
                 f"🚨 <b>Срочно: подписка истекает менее чем через 12 часов!</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"Ваш VPN-профиль <b>{name}</b> будет приостановлен:\n"
+                f"Ваш VPN-профиль <b>{safe_name}</b> будет приостановлен:\n"
                 f"📅 <b>{date_str} в {time_str}</b>\n\n"
                 f"Продлите тариф прямо сейчас, чтобы ваши устройства не отключились от сервиса.\n"
                 f"━━━━━━━━━━━━━━━━━━━━"
@@ -658,7 +672,7 @@ async def check_and_send_expiry_notifications():
             text = (
                 f"❌ <b>Срок действия вашей подписки завершен</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n"
-                f"Действие профиля <b>{name}</b> окончено <b>{date_str}</b>.\n"
+                f"Действие профиля <b>{safe_name}</b> окончено <b>{date_str}</b>.\n"
                 f"Сервер приостановил подключение.\n\n"
                 f"Вы можете возобновить доступ в любой момент — просто выберите нужный тариф ниже:"
             )
@@ -697,11 +711,12 @@ async def expiry_checker_loop():
 
 def find_subscriptions_by_tg_id(telegram_id: str):
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = connect_panel_db()
         cursor = conn.cursor()
         
+        # LIKE отбирает только кандидатов, точная проверка ниже через extract_tg_id
         query = """
-            SELECT name, expiry, auto_reset, next_reset FROM clients 
+            SELECT name, expiry, auto_reset, next_reset, desc, remark, tg_id FROM clients 
             WHERE desc LIKE ? OR remark LIKE ? OR tg_id = ?
         """
         tg_num = int(telegram_id) if str(telegram_id).isdigit() else 0
@@ -710,7 +725,9 @@ def find_subscriptions_by_tg_id(telegram_id: str):
         conn.close()
         
         subs = []
-        for name, expiry, auto_reset, next_reset in rows:
+        for name, expiry, auto_reset, next_reset, desc, remark, tg_id_raw in rows:
+            if extract_tg_id(desc, remark, tg_id_raw) != tg_num:
+                continue
             if expiry and expiry > 0:
                 ts = expiry / 1000 if expiry > 100_000_000_000 else expiry
                 date_str = datetime.fromtimestamp(ts).strftime("%d.%m.%Y")
@@ -740,7 +757,7 @@ def get_authorized_telegram_ids() -> list[int]:
     if not os.path.exists(DB_PATH):
         return []
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = connect_panel_db()
         cursor = conn.cursor()
         cursor.execute("""
             SELECT desc, remark, tg_id FROM clients
@@ -764,7 +781,7 @@ def get_service_stats() -> dict:
     if not os.path.exists(DB_PATH):
         return {"total": 0, "active": 0, "finite": 0, "permanent": 0, "unique_tg": 0}
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = connect_panel_db()
         cursor = conn.cursor()
         
         cursor.execute("SELECT count(*) FROM clients")

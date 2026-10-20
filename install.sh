@@ -412,8 +412,6 @@ deploy_project_files() {
         sed -i "s/{{ SUPPORT_BOT_USERNAME }}/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
         sed -i "s/<h1 id=\"brand-title\">.*<\/h1>/<h1 id=\"brand-title\">${PROJECT_NAME}<\/h1>/g" "${INSTALL_DIR}/index.html"
         sed -i "s/<title>Настройка VPN - .*<\/title>/<title>Настройка VPN - ${PROJECT_NAME}<\/title>/g" "${INSTALL_DIR}/index.html"
-        sed -i "s/podnyatie_support_bot/${SUPPORT_BOT_USERNAME}/g" "${INSTALL_DIR}/index.html"
-        sed -i "s/podnyatie_vpn_bot/${active_bot}/g" "${INSTALL_DIR}/index.html"
     fi
 
     # Создание общего виртуального окружения Python
@@ -458,6 +456,9 @@ EOF
     log_info "Установка systemd служб..."
     cp "${INSTALL_DIR}/vpn-bot.service" /etc/systemd/system/vpn-bot.service
     cp "${INSTALL_DIR}/vpn-dashboard.service" /etc/systemd/system/vpn-dashboard.service
+
+    # Сервисы работают от отдельного пользователя vpnbot
+    bash "${INSTALL_DIR}/setup-service-user.sh"
 
     log_success "Файлы и службы успешно подготовлены."
 }

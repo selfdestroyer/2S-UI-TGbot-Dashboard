@@ -45,6 +45,12 @@ if [ -d "${INSTALL_DIR}" ]; then
     echo -e "${BLUE}[ИНФО] Проверка и обновление библиотек Python...${NC}"
     "${INSTALL_DIR}/venv/bin/pip" install -r "${INSTALL_DIR}/requirements.txt" --quiet
 
+    # Обновление unit-файлов и сервисного пользователя
+    echo -e "${BLUE}[ИНФО] Обновление systemd служб...${NC}"
+    cp "${INSTALL_DIR}/vpn-bot.service" /etc/systemd/system/vpn-bot.service
+    cp "${INSTALL_DIR}/vpn-dashboard.service" /etc/systemd/system/vpn-dashboard.service
+    bash "${INSTALL_DIR}/setup-service-user.sh"
+
     # Перезапуск служб
     echo -e "${BLUE}[ИНФО] Перезапуск systemd служб...${NC}"
     systemctl daemon-reload

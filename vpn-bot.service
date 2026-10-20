@@ -3,12 +3,24 @@ Description=Telegram VPN Subscriptions Bot
 After=network.target
 
 [Service]
-User=root
+User=vpnbot
+Group=vpnbot
 WorkingDirectory=/var/www/2S-UI-TGbot-Dashboard
 EnvironmentFile=-/var/www/2S-UI-TGbot-Dashboard/.env
 ExecStart=/var/www/2S-UI-TGbot-Dashboard/venv/bin/python bot.py
 Restart=always
 RestartSec=5
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# База 2S-UI в режиме WAL: даже читателю нужна запись в s-ui.db-shm,
+# а файлы панели принадлежат root с правами 600. Отсюда единственная
+# capability; саму базу бот открывает с mode=ro.
+AmbientCapabilities=CAP_DAC_OVERRIDE
+CapabilityBoundingSet=CAP_DAC_OVERRIDE
+ReadWritePaths=/usr/local/s-ui/db /var/www/2S-UI-TGbot-Dashboard
 
 [Install]
 WantedBy=multi-user.target
