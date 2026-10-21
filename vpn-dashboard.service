@@ -18,7 +18,7 @@ PrivateTmp=true
 # См. комментарий в vpn-bot.service
 AmbientCapabilities=CAP_DAC_OVERRIDE
 CapabilityBoundingSet=CAP_DAC_OVERRIDE
-ReadWritePaths=/usr/local/s-ui/db
+# ReadWritePaths нет: вся файловая система, включая базу панели, только для чтения
 
 [Install]
 WantedBy=multi-user.target

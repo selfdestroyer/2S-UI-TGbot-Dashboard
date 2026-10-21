@@ -410,7 +410,7 @@ read_panel_settings() {
 valid_host() { [[ "$1" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]]; }
 
 port_owner() {  # имя процесса, слушающего TCP-порт, или пусто
-    ss -ltnpH "( sport = :$1 )" 2>/dev/null | grep -oE 'users:\(\("[^"]+"' | head -n1 | sed 's/users:(("//' || true
+    ss -ltnpH "( sport = :$1 )" 2>/dev/null | grep -oE 'users:\(\("[^"]+"' | head -n1 | sed 's/users:(("//; s/"$//' || true
 }
 
 dns_points_here() {

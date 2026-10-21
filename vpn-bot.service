@@ -16,13 +16,13 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-# База 2S-UI в режиме WAL: даже читателю нужна запись в s-ui.db-shm,
-# а файлы панели принадлежат root с правами 600. Отсюда единственная
-# capability; саму базу бот открывает с mode=ro.
+# Файлы панели принадлежат root с правами 600, отсюда единственная capability.
+# Папка базы 2S-UI не входит в ReadWritePaths: ProtectSystem=strict монтирует её
+# только для чтения, и записать в базу панели бот не может даже с этой capability.
 AmbientCapabilities=CAP_DAC_OVERRIDE
 CapabilityBoundingSet=CAP_DAC_OVERRIDE
-# bot_data.db и её журнал лежат в папке проекта
-ReadWritePaths=/usr/local/s-ui/db /var/www/2S-UI-TGbot-Dashboard
+# Писать можно только в свою bot_data.db и её журнал в папке проекта
+ReadWritePaths=/var/www/2S-UI-TGbot-Dashboard
 
 [Install]
 WantedBy=multi-user.target
