@@ -1,5 +1,7 @@
 import os
 import re
+import json
+import html
 import time
 import sqlite3
 from urllib.parse import quote
@@ -36,17 +38,25 @@ def get_html_content() -> str:
     support_bot = os.getenv("SUPPORT_BOT_USERNAME", "").strip().lstrip("@") or "your_support_bot"
     main_bot = os.getenv("BOT_USERNAME", "").strip().lstrip("@") or support_bot
 
-    # Замена конфигурации JS через регулярные выражения
-    content = re.sub(r'window\.PROJECT_NAME\s*=\s*[^;]+;', f'window.PROJECT_NAME = "{project_name}";', content)
-    content = re.sub(r'window\.PANEL_DOMAIN\s*=\s*[^;]+;', f'window.PANEL_DOMAIN = "{main_domain}";', content)
-    content = re.sub(r'window\.PANEL_PORT\s*=\s*[^;]+;', f'window.PANEL_PORT = "{panel_port}";', content)
-    content = re.sub(r'window\.BOT_USERNAME\s*=\s*[^;]+;', f'window.BOT_USERNAME = "{main_bot}";', content)
-    content = re.sub(r'window\.SUPPORT_BOT_USERNAME\s*=\s*[^;]+;', f'window.SUPPORT_BOT_USERNAME = "{support_bot}";', content)
+    panel_sub_url = os.getenv("PANEL_SUB_URL", "").strip().rstrip("/")
 
-    # Прямая замена плейсхолдеров
-    content = content.replace("{{ PROJECT_NAME }}", project_name)
-    content = content.replace("{{ BOT_USERNAME }}", main_bot)
-    content = content.replace("{{ SUPPORT_BOT_USERNAME }}", support_bot)
+    # Конфигурация JS: значения вставляются как JSON-строки, чтобы кавычки в названии не ломали скрипт
+    js_values = {
+        "PROJECT_NAME": project_name,
+        "PANEL_DOMAIN": main_domain,
+        "PANEL_PORT": panel_port,
+        "BOT_USERNAME": main_bot,
+        "SUPPORT_BOT_USERNAME": support_bot,
+        "PANEL_SUB_URL": panel_sub_url,
+    }
+    for key, value in js_values.items():
+        literal = json.dumps(value, ensure_ascii=False).replace("</", "<\\/")
+        content = re.sub(rf'window\.{key}\s*=\s*[^;]+;', lambda _m, k=key, v=literal: f'window.{k} = {v};', content)
+
+    # Прямая замена плейсхолдеров в HTML
+    content = content.replace("{{ PROJECT_NAME }}", html.escape(project_name))
+    content = content.replace("{{ BOT_USERNAME }}", html.escape(main_bot))
+    content = content.replace("{{ SUPPORT_BOT_USERNAME }}", html.escape(support_bot))
 
     return content
 
@@ -64,6 +74,11 @@ def format_bytes(b: int) -> str:
     if kb >= 1.0:
         return f"{kb:.1f} КБ"
     return f"{b} Б"
+
+def normalize_ts(value) -> int:
+    """Приводит отметку времени панели к секундам (2S-UI может хранить миллисекунды)."""
+    ts = int(value or 0)
+    return ts // 1000 if ts > 100_000_000_000 else ts
 
 def get_client_stats(username: str) -> dict | None:
     """Извлекает из базы данных s-ui.db актуальные данные по клиенту."""
@@ -89,10 +104,10 @@ def get_client_stats(username: str) -> dict | None:
         name = row[0]
         enable = bool(row[1])
         volume = int(row[2] or 0)
-        expiry = int(row[3] or 0)
+        expiry = normalize_ts(row[3])
         down = int(row[4] or 0)
         up = int(row[5] or 0)
-        next_reset = int(row[8] or 0)
+        next_reset = normalize_ts(row[8])
 
         used = down + up
         now_ts = int(time.time())
@@ -171,7 +186,7 @@ def check_user_exists(username: str) -> bool:
 
 @app.api_route("/api/subscription/{username}", methods=["GET", "HEAD"])
 async def subscription_api(username: str, response: Response):
-    """API для получения статистики подписки (трафик, дата, статус). Кэшируется на 1 час."""
+    """API для получения статистики подписки (трафик, дата, статус)."""
     stats = get_client_stats(username)
     if not stats:
         return JSONResponse(
@@ -179,8 +194,8 @@ async def subscription_api(username: str, response: Response):
             content={"error": "Подписка не найдена", "username": username}
         )
 
-    # Кэширование информации на 1 час (3600 сек)
-    response.headers["Cache-Control"] = "public, max-age=3600"
+    # Персональные данные: только кэш браузера, 5 минут (страница сама кэширует данные на час)
+    response.headers["Cache-Control"] = "private, max-age=300"
     return stats
 
 # ----------------- ОБСЛУЖИВАНИЕ ФРОНТЕНДА -----------------

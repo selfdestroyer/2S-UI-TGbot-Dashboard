@@ -34,7 +34,7 @@ REQUIRED_COLUMNS="name desc remark tg_id expiry enable auto_reset next_reset vol
 ENV_KEYS=(BOT_TOKEN ADMIN_TG_ID BOT_USERNAME PROJECT_NAME DB_PATH BOT_DATA_DB
           MAIN_DOMAIN PANEL_PORT SUB_DOMAIN SUPPORT_BOT_USERNAME
           SERVICE_GROUP_NAME SERVICE_GROUP_URL CARD_NUMBER PAYMENT_REQUISITES
-          TARIFFS TIMEZONE)
+          TARIFFS TIMEZONE PANEL_SUB_URL)
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
@@ -315,6 +315,10 @@ load_values() {
     : "${BOT_DATA_DB:=${INSTALL_DIR}/bot_data.db}"
 }
 
+compose_panel_sub_url() {  # полный адрес подписок панели для страницы дашборда
+    PANEL_SUB_URL="${PANEL_SCHEME}://${MAIN_DOMAIN}:${PANEL_PORT}${PANEL_SUB_PATH%/}"
+}
+
 compose_sub_domain() {
     if [ "$HTTPS_PORT" = "443" ]; then SUB_DOMAIN="$SUB_HOST"; else SUB_DOMAIN="${SUB_HOST}:${HTTPS_PORT}"; fi
 }
@@ -553,6 +557,7 @@ wizard() {
     section "6/8 Домены"
     ask MAIN_DOMAIN "Домен панели 2S-UI (ссылки https://домен:порт${PANEL_SUB_PATH}имя)" "${MAIN_DOMAIN:-$PANEL_SUB_DOMAIN}"
     ask PANEL_PORT "Порт подписок панели" "${PANEL_PORT:-${PANEL_SUB_PORT:-2096}}"
+    compose_panel_sub_url
     while true; do
         ask SUB_HOST "Поддомен дашборда (на него бот выдаёт ссылки)" "${SUB_HOST:-${MAIN_DOMAIN:+sub.$MAIN_DOMAIN}}"
         SUB_HOST="$(echo "$SUB_HOST" | sed -E 's~^https?://~~; s~/+$~~; s~:.*$~~')"
@@ -959,6 +964,7 @@ do_update() {
     [ -n "$TIMEZONE" ] || TIMEZONE="$(timedatectl show -p Timezone --value 2>/dev/null || echo Europe/Moscow)"
     find_panel_db
     read_panel_settings
+    [ -n "$PANEL_SUB_URL" ] || compose_panel_sub_url
 
     section "Обновление"
     mkdir -p "$BACKUP_DIR" && chmod 700 "$BACKUP_DIR"

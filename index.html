@@ -1,1028 +1,3290 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Настройка VPN - {{ PROJECT_NAME }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-base: #0b0e14;
-            --bg-panel: #161925;
-            --bg-card: #1c1f2e;
-            --border: #2a2e3f;
-            --border-hover: #3b4054;
-            --text-main: #f8fafc;
-            --text-muted: #8b92a5;
-            --accent-cyan: #06b6d4;
-            --accent-purple: #8b5cf6;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-        }
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-base);
-            color: var(--text-main);
-            margin: 0;
-            padding: 14px 12px 24px 12px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            line-height: 1.4;
-            -webkit-font-smoothing: antialiased;
-        }
-        .container {
-            max-width: 680px;
-            width: 100%;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d14">
+<meta name="robots" content="noindex, nofollow">
+<title>Подписка — {{ PROJECT_NAME }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* ---------- Токены панели 2S-UI (frontend/src/styles/tokens.css) ---------- */
+:root {
+  --brand: #635bff;
+  --brand-600: #5249f5;
+  --brand-soft: rgba(99, 91, 255, 0.12);
+  --brand-ink: #8f89ff;
+  --cyan: #1bc7d8;
+  --emerald: #18b574;
+  --amber: #f0a92e;
+  --rose: #f0556b;
 
-        /* Header */
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 10px;
-            padding: 0 4px;
-        }
-        .header-top h1 {
-            font-size: 20px;
-            font-weight: 700;
-            margin: 0;
-            color: var(--text-main);
-            letter-spacing: -0.4px;
-        }
-        .header-top .subtitle {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin: 0;
-        }
+  --bg: #0b0d14;
+  --surface: #12141d;
+  --surface-2: #171a25;
+  --surface-3: #1d2130;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-2: rgba(255, 255, 255, 0.12);
+  --text: #eef0f6;
+  --text-2: #a7adc0;
+  --track: rgba(255, 255, 255, 0.08);
 
-        /* Panel sections */
-        .panel-section {
-            background-color: var(--bg-panel);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 13px 15px;
-            margin-bottom: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.35);
-        }
-        .section-title {
-            font-size: 13px;
-            font-weight: 600;
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: var(--text-main);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .section-subtitle {
-            font-size: 11px;
-            font-weight: 400;
-            color: var(--text-muted);
-        }
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --font-ui: "Manrope", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px -16px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
 
-        /* Stats Header */
-        .stats-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 10px;
-        }
-        .stats-title {
-            font-size: 13px;
-            font-weight: 600;
-        }
-        .user-badge {
-            color: var(--accent-cyan);
-            font-family: 'SF Mono', monospace;
-            font-size: 12px;
-            margin-left: 6px;
-        }
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            background: rgba(16, 185, 129, 0.12);
-            border: 1px solid rgba(16, 185, 129, 0.25);
-            color: var(--success);
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        .status-badge.warning {
-            background: rgba(245, 158, 11, 0.12);
-            border-color: rgba(245, 158, 11, 0.25);
-            color: var(--warning);
-        }
-        .status-badge.expired {
-            background: rgba(239, 68, 68, 0.12);
-            border-color: rgba(239, 68, 68, 0.25);
-            color: var(--danger);
-        }
-        .status-dot {
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background-color: currentColor;
-            box-shadow: 0 0 6px currentColor;
-        }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+a { color: var(--text-2); }
+a:hover { color: var(--text); }
+button { font-family: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-        /* Metrics Row */
-        .metrics-row {
-            display: flex;
-            gap: 14px;
-            margin-bottom: 12px;
-            align-items: center;
-        }
-        .chart-box {
-            width: 86px;
-            height: 86px;
-            position: relative;
-            flex-shrink: 0;
-        }
-        .circular-chart {
-            width: 100%;
-            height: 100%;
-            transform: rotate(-90deg);
-        }
-        .circle-bg {
-            fill: none;
-            stroke: #1e2233;
-            stroke-width: 5.5;
-        }
-        .circle-bar {
-            fill: none;
-            stroke-width: 5.5;
-            stroke-linecap: round;
-            stroke-dasharray: 283;
-            stroke-dashoffset: 283;
-            transition: stroke-dashoffset 0.8s ease-out;
-            filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.4));
-        }
-        .chart-center {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            width: 100%;
-        }
-        .chart-percent {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-main);
-            line-height: 1;
-        }
-        .chart-label {
-            font-size: 9px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 3px;
-        }
+/* ---------- Фон ---------- */
+.bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.blob { position: absolute; border-radius: 50%; }
+.blob.a { top: -260px; right: -200px; width: 900px; height: 700px; background: radial-gradient(closest-side, rgba(99, 91, 255, 0.2), transparent); animation: driftA 28s ease-in-out infinite; }
+.blob.b { bottom: -300px; left: -240px; width: 800px; height: 680px; background: radial-gradient(closest-side, rgba(27, 199, 216, 0.1), transparent); animation: driftB 34s ease-in-out infinite; }
+@keyframes driftA { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-90px, 60px); } }
+@keyframes driftB { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(80px, -50px); } }
 
-        .metrics-grid {
-            flex-grow: 1;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
-        .metric-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 7px 10px;
-        }
-        .metric-label {
-            font-size: 10px;
-            color: var(--text-muted);
-            margin-bottom: 2px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        .metric-value {
-            font-size: 13px;
-            font-weight: 600;
-            font-family: 'SF Mono', monospace;
-            color: var(--text-main);
-        }
+/* ---------- Каркас ---------- */
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 1120px; margin: 0 auto;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 12px;
+}
+.layout { display: flex; flex-direction: column; gap: 12px; }
+.col-left { display: flex; flex-direction: column; gap: 12px; }
 
-        /* Progress Bar */
-        .progress-bar-wrap {
-            width: 100%;
-            height: 4px;
-            background-color: #1e2233;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-        .progress-bar-fill {
-            height: 100%;
-            width: 0%;
-            border-radius: 4px;
-            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
-            box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
-            transition: width 0.8s ease-out;
-        }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+}
+.card h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
-        /* Footer & Link Box */
-        .stats-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-        }
-        .refresh-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            padding: 3px 8px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 10px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            transition: all 0.2s;
-        }
-        .refresh-btn:hover {
-            color: var(--text-main);
-            border-color: var(--text-muted);
-        }
-        .refresh-btn.spinning svg {
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+/* ---------- Анимации ---------- */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.fu { animation: fadeUp .6s var(--ease) both; }
+.d1 { animation-delay: .06s; } .d2 { animation-delay: .12s; } .d3 { animation-delay: .18s; } .d4 { animation-delay: .24s; }
+@keyframes swapIn { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+.swap { animation: swapIn .38s var(--ease) both; }
+@keyframes ping { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(3.2); opacity: 0; } }
+@keyframes shine { 0%, 72% { transform: translateX(-140%) skewX(-18deg); } 100% { transform: translateX(320%) skewX(-18deg); } }
+@keyframes sk { from { background-position: -240px 0; } to { background-position: 240px 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.sk {
+  background: linear-gradient(90deg, rgba(255,255,255,.05) 20%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.05) 80%);
+  background-size: 480px 100%;
+  animation: sk 1.3s linear infinite;
+  border-radius: 8px;
+}
 
-        .link-box {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 5px 5px 5px 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .link-box input {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            flex-grow: 1;
-            font-family: 'SF Mono', monospace;
-            font-size: 11px;
-            outline: none;
-            text-overflow: ellipsis;
-        }
-        .copy-btn {
-            background-color: var(--bg-panel);
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-        .copy-btn:hover {
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
-        }
+/* ---------- Кнопки ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 11px; border: 1px solid transparent;
+  font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap;
+  cursor: pointer; user-select: none;
+  transition: transform .18s var(--ease), box-shadow .18s, background-color .18s, border-color .18s, color .18s;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: scale(.97); }
+.btn:focus-visible, .seg button:focus-visible, .app-pick:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.btn svg { flex: none; }
+.btn-p {
+  height: 52px; border-radius: 13px; padding: 0 20px;
+  background: var(--brand); color: #fff; font-size: 15.5px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 6px 16px -6px rgba(99,91,255,.6);
+}
+.btn-p:hover { background: var(--brand-600); color: #fff; box-shadow: 0 8px 22px -6px rgba(99,91,255,.75); }
+.btn-g { height: 44px; padding: 0 14px; background: var(--surface-3); color: var(--text); border-color: var(--line-2); }
+.btn-g:hover { background: #232838; border-color: rgba(255,255,255,.18); color: var(--text); }
+.btn-sm { height: 38px; font-size: 13px; border-radius: 10px; }
+.shine { position: relative; overflow: hidden; }
+.shine::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 38%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.26), transparent);
+  animation: shine 5s ease-in-out infinite; pointer-events: none;
+}
 
-        /* Service Grid (2 Columns, directly under stats for instant visibility) */
-        .service-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-        .service-card {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 10px 12px;
-            text-decoration: none;
-            transition: all 0.2s;
-        }
-        .service-card:hover {
-            transform: translateY(-1px);
-        }
-        .service-card.buy {
-            background: linear-gradient(145deg, rgba(139, 92, 246, 0.08), var(--bg-card));
-            border-color: rgba(139, 92, 246, 0.25);
-        }
-        .service-card.buy:hover {
-            border-color: var(--accent-purple);
-            box-shadow: 0 4px 12px -2px rgba(139, 92, 246, 0.3);
-        }
-        .service-card.support {
-            background: linear-gradient(145deg, rgba(6, 182, 212, 0.08), var(--bg-card));
-            border-color: rgba(6, 182, 212, 0.25);
-        }
-        .service-card.support:hover {
-            border-color: var(--accent-cyan);
-            box-shadow: 0 4px 12px -2px rgba(6, 182, 212, 0.3);
-        }
-        .service-icon {
-            width: 34px;
-            height: 34px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .service-card.buy .service-icon {
-            background: rgba(139, 92, 246, 0.15);
-            color: var(--accent-purple);
-        }
-        .service-card.support .service-icon {
-            background: rgba(6, 182, 212, 0.15);
-            color: var(--accent-cyan);
-        }
-        .service-icon svg {
-            width: 18px;
-            height: 18px;
-        }
-        .service-info {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .service-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-main);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .service-subtitle {
-            font-size: 10px;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+/* ---------- Шапка ---------- */
+.top { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.logo {
+  width: 38px; height: 38px; flex: none; border-radius: 11px; background: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px -6px rgba(99,91,255,.7);
+}
+.brand-name { font-size: 17px; font-weight: 800; letter-spacing: -.3px; }
+.brand-sub { font-feature-settings: "calt" 0; font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-actions { display: flex; align-items: center; gap: 12px; }
+.refresh { width: 44px; padding: 0; }
+.refresh.spinning svg { animation: spin .8s linear infinite; }
 
-        /* Vertical App Grid */
-        .app-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 9px;
-        }
-        .app-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 11px 13px;
-            transition: border-color 0.2s;
-        }
-        .app-card:hover {
-            border-color: var(--border-hover);
-        }
-        .app-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 9px;
-        }
-        .app-title-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .app-icon {
-            font-size: 17px;
-            line-height: 1;
-        }
-        .app-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-        .app-platform {
-            font-size: 10px;
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-            padding: 2px 7px;
-            border-radius: 4px;
-            color: var(--text-muted);
-        }
-        .app-main-action {
-            display: block;
-            width: 100%;
-            text-align: center;
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
-            cursor: pointer;
-            border: none;
-            font-family: inherit;
-            margin-bottom: 7px;
-            line-height: 1.2;
-        }
-        .app-main-action.primary {
-            background: var(--accent-purple);
-            color: white;
-            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
-        }
-        .app-main-action.primary:hover {
-            background: #7c3aed;
-        }
-        .app-main-action.cyan {
-            background: #0891b2;
-            color: white;
-            box-shadow: 0 2px 8px rgba(8, 145, 178, 0.3);
-        }
-        .app-main-action.cyan:hover {
-            background: #0e7490;
-        }
-        .app-main-action.green {
-            background: var(--success);
-            color: white;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
-        }
-        .app-main-action.green:hover {
-            background: #059669;
-        }
+/* ---------- Статус ---------- */
+.chip {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 8px; height: 24px; padding: 0 9px;
+  border-radius: 7px; font-size: 12px; font-weight: 700;
+  color: var(--emerald); background: rgba(24,181,116,.14); border: 1px solid rgba(24,181,116,.26);
+}
+.chip.warn { color: var(--amber); background: rgba(240,169,46,.14); border-color: rgba(240,169,46,.28); }
+.chip.bad { color: var(--rose); background: rgba(240,85,107,.14); border-color: rgba(240,85,107,.28); }
+.dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: currentColor; animation: ping 2s var(--ease) infinite; }
+.chip.bad .dot::after { animation: none; }
+.status { display: flex; flex-direction: column; gap: 12px; }
+.status-info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.days { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.days-num { font-size: 40px; font-weight: 800; letter-spacing: -1.6px; line-height: 1; }
+.days-word { font-size: 17px; font-weight: 700; }
+.expiry { font-size: 13px; color: var(--text-2); }
+.divider { height: 1px; background: var(--line); }
+.mini-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; min-height: 18px; }
 
-        .app-store-links {
-            display: flex;
-            gap: 6px;
-        }
-        .app-store-btn {
-            flex: 1;
-            text-align: center;
-            font-size: 11px;
-            color: var(--text-muted);
-            text-decoration: none;
-            padding: 5px 8px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            background: var(--bg-panel);
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-        .app-store-btn:hover {
-            color: var(--text-main);
-            border-color: var(--text-muted);
-        }
+/* ---------- Кольцо трафика ---------- */
+.ring { position: relative; flex: none; }
+.ring svg { display: block; transform: rotate(-90deg); }
+.ring .bar { transition: stroke .3s; }
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.ring-mini { width: 84px; height: 84px; }
+.ring-mini .pct { font-size: 18px; font-weight: 800; line-height: 1.1; }
+.ring-mini .lbl { font-size: 10.5px; color: var(--text-2); }
+.ring-big { width: 156px; height: 156px; }
+.ring-big .pct { font-size: 32px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+.ring-big .lbl { font-size: 12px; color: var(--text-2); }
 
-        /* Error box in 2S-UI style */
-        #error-msg {
-            display: none;
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 32px 20px;
-            text-align: center;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-            margin-bottom: 20px;
-        }
-        .error-msg-title {
-            font-size: 17px;
-            font-weight: 700;
-            color: var(--text-main);
-            margin: 0 0 8px 0;
-        }
-        .error-msg-desc {
-            color: var(--text-muted);
-            font-size: 13px;
-            line-height: 1.5;
-            margin: 0 0 20px 0;
-        }
-        .btn-telegram-error {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            background: var(--accent-cyan);
-            color: #0b0e14;
-            padding: 11px 22px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
-            box-shadow: 0 2px 10px rgba(6, 182, 212, 0.3);
-        }
-        .btn-telegram-error:hover {
-            background: #0891b2;
-            color: white;
-            transform: translateY(-1px);
-        }
+/* ---------- Трафик (ПК) ---------- */
+.traffic { display: flex; flex-direction: column; gap: 18px; }
+.traffic-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.tiles3 { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stat { padding: 11px 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid rgba(255,255,255,.06); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stat .k { font-size: 11.5px; color: var(--text-2); }
+.stat .v { font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .v.good { color: var(--emerald); }
+.foot-note { display: flex; align-items: center; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--text-2); }
+.load-error { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; font-size: 13.5px; color: var(--text-2); }
 
-        /* Modern Toast Notification */
-        .toast-notification {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: #161925;
-            border: 1px solid #3b4054;
-            border-radius: 12px;
-            padding: 12px 18px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 12px 36px rgba(0,0,0,0.7), 0 0 15px rgba(139, 92, 246, 0.25);
-            z-index: 9999;
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            max-width: 90vw;
-            width: 380px;
-            pointer-events: none;
-        }
-        .toast-notification.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .toast-icon {
-            font-size: 22px;
-            line-height: 1;
-            flex-shrink: 0;
-        }
-        .toast-content {
-            flex-grow: 1;
-        }
-        .toast-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-main);
-            margin-bottom: 2px;
-        }
-        .toast-desc {
-            font-size: 11px;
-            color: var(--text-muted);
-            line-height: 1.3;
-        }
-    </style>
+/* ---------- Подключение ---------- */
+.connect { display: flex; flex-direction: column; gap: 10px; }
+.device-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 7px;
+  background: var(--surface-3); border: 1px solid var(--line); color: var(--text-2); font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.connect-sub { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+
+.seg { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 3px; border-radius: 12px; background: var(--surface-3); border: 1px solid var(--line); }
+.seg-ind { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 3); border-radius: 9px; background: #2b3045; box-shadow: 0 2px 8px -2px rgba(0,0,0,.5); transition: transform .32s var(--ease); }
+.seg button { position: relative; height: 40px; border: none; background: transparent; border-radius: 9px; font-size: 13.5px; font-weight: 700; color: var(--text-2); cursor: pointer; transition: color .2s; }
+.seg button[aria-pressed="true"] { color: var(--text); }
+.seg button:active { transform: scale(.96); }
+
+.connect-body { display: flex; flex-direction: column; gap: 10px; }
+.connect-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.action { display: flex; flex-direction: column; gap: 10px; }
+.note svg { flex: none; margin-top: 1px; }
+.note {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 11px;
+  background: rgba(27,199,216,.08); border: 1px solid rgba(27,199,216,.22); font-size: 13px; line-height: 1.45;
+}
+.install-cap { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.link-label { font-size: 12.5px; font-weight: 700; color: var(--text-2); margin-top: 4px; }
+.link-row { display: flex; flex-direction: column; gap: 8px; }
+.link-box {
+  flex: 1; min-width: 0; min-height: 44px; padding: 10px 12px; border-radius: 11px;
+  background: var(--surface-3); border: 1px solid var(--line);
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.45; color: var(--text);
+  word-break: break-all; user-select: all; -webkit-user-select: all;
+  display: flex; align-items: center;
+}
+.copy-btn.done { color: var(--emerald); }
+.hint { font-size: 12.5px; color: var(--text-2); line-height: 1.45; }
+
+.vsep { width: 1px; background: var(--line); }
+.qr { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 176px; flex: none; }
+.qr-box { width: 156px; height: 156px; border-radius: 14px; background: #fff; padding: 10px; display: flex; align-items: center; justify-content: center; }
+.qr-box svg { width: 100%; height: 100%; display: block; }
+.qr-cap { font-size: 12px; color: var(--text-2); text-align: center; line-height: 1.45; }
+
+.apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 8px; }
+.app {
+  padding: 16px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 14px;
+  transition: transform .2s var(--ease), border-color .25s, background-color .25s;
+}
+.app:hover { border-color: rgba(255,255,255,.14); transform: translateY(-2px); }
+.app.on { background: rgba(99,91,255,.08); border-color: rgba(99,91,255,.45); }
+.app-pick { display: flex; align-items: center; gap: 11px; width: 100%; padding: 0; margin: 0; background: none; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 8px; }
+.app-ico { width: 40px; height: 40px; flex: none; border-radius: 11px; display: flex; align-items: center; justify-content: center; }
+.app-name { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.app-name b { font-size: 15px; }
+.app-name span { font-size: 12px; color: var(--text-2); }
+.radio { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.28); display: flex; align-items: center; justify-content: center; transition: background-color .25s, border-color .25s; }
+.radio svg { opacity: 0; transform: scale(.4); transition: opacity .2s, transform .25s var(--ease); }
+.app.on .radio { background: var(--brand); border-color: var(--brand); }
+.app.on .radio svg { opacity: 1; transform: scale(1); }
+.app-links { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+
+/* ---------- Плитки ---------- */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.tile {
+  display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: var(--radius-md);
+  background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: var(--text);
+  transition: transform .18s var(--ease), border-color .18s;
+}
+.tile:hover { color: var(--text); border-color: rgba(255,255,255,.14); transform: translateY(-1px); }
+.tile.hot { border-color: rgba(99,91,255,.5); background: rgba(99,91,255,.08); }
+.tile-ico { width: 36px; height: 36px; flex: none; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.tile-txt { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.tile-txt b { font-size: 14.5px; }
+.tile-txt > span { font-size: 12.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile-arrow { flex: none; color: var(--text-2); }
+
+/* ---------- Ошибка (нет ссылки) ---------- */
+.empty { width: 100%; max-width: 440px; margin: 40px auto 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px 22px; }
+.empty h2 { font-size: 19px; }
+.empty .chip { align-self: center; }
+.empty .btn { white-space: normal; height: auto; min-height: 52px; padding: 12px 16px; text-align: center; }
+.empty p { margin: 0 0 6px; font-size: 13.5px; line-height: 1.5; color: var(--text-2); }
+
+/* ---------- Тост ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 10;
+  width: min(420px, calc(100% - 32px));
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 14px;
+  background: rgba(23, 26, 37, .96); border: 1px solid var(--line-2);
+  box-shadow: 0 24px 60px -16px rgba(0,0,0,.6);
+  transform: translate(-50%, 140%); opacity: 0; transition: transform .35s var(--ease), opacity .35s;
+}
+.toast.show { transform: translate(-50%, 0); opacity: 1; }
+.toast-ico { width: 32px; height: 32px; flex: none; border-radius: 9px; background: var(--brand-soft); color: var(--brand-ink); display: flex; align-items: center; justify-content: center; }
+.toast-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.toast-txt b { font-size: 14px; }
+.toast-txt span { font-size: 12.5px; color: var(--text-2); line-height: 1.45; }
+
+/* ---------- Раскладки ---------- */
+@media (max-width: 899px) {
+  .only-d { display: none !important; }
+}
+@media (min-width: 900px) {
+  .only-m { display: none !important; }
+  .wrap { padding: 40px 24px; gap: 24px; }
+  .layout { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 20px; align-items: stretch; }
+  .col-left { gap: 20px; }
+  .card { padding: 22px; }
+  .connect { padding: 22px 24px; gap: 18px; }
+  .connect-body { flex-direction: row; gap: 22px; align-items: stretch; }
+  .connect-main { justify-content: center; gap: 12px; }
+  .link-row { flex-direction: row; }
+  .link-row .copy-btn { height: auto; min-height: 44px; }
+  .days-num { font-size: 52px; letter-spacing: -2px; }
+  .days-word { font-size: 21px; }
+  .expiry { font-size: 14px; }
+  .traffic { flex: 1; }
+  .logo { width: 40px; height: 40px; border-radius: 12px; }
+  .brand-name { font-size: 18px; }
+  .brand-sub { font-size: 12.5px; }
+  .refresh { width: auto; padding: 0 14px; height: 40px; }
+  .tiles { gap: 20px; }
+  .tile { padding: 18px 20px; gap: 14px; border-radius: 16px; }
+  .tile-ico { width: 40px; height: 40px; border-radius: 11px; }
+  .tile-txt b { font-size: 15px; }
+}
+@media (min-width: 1061px) {
+  .apps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 900px) and (max-width: 1060px) {
+  .qr, .vsep { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header-top">
-            <h1 id="brand-title">{{ PROJECT_NAME }}</h1>
-            <p class="subtitle">Панель управления подпиской</p>
-        </div>
-        
-        <div id="error-msg">
-            <div class="status-badge warning" style="margin-bottom: 14px;">
-                <div class="status-dot"></div>
-                Ссылка не указана
-            </div>
-            <h2 class="error-msg-title">Ссылка на подписку не найдена</h2>
-            <p class="error-msg-desc">
-                Для доступа к статистике и подключению откройте персональную ссылку, полученную в вашем Telegram-боте.
-            </p>
-            <a href="https://t.me/{{ BOT_USERNAME }}" target="_blank" class="btn-telegram-error" id="error-bot-link">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                <span id="error-bot-text">Открыть Telegram-бот (@{{ BOT_USERNAME }})</span>
-            </a>
-        </div>
+<div class="bg" aria-hidden="true"><div class="blob a"></div><div class="blob b"></div></div>
 
-        <div id="main-content">
-            <!-- 1. Stats Section -->
-            <div class="panel-section" id="stats-card" style="display:none;">
-                <div class="stats-header">
-                    <div class="stats-title">Client <span class="user-badge" id="stats-username">-</span></div>
-                    <div class="status-badge" id="expiry-badge">
-                        <div class="status-dot"></div>
-                        <span id="expiry-text">Загрузка...</span>
-                    </div>
-                </div>
+<main class="wrap">
 
-                <div class="metrics-row">
-                    <div class="chart-box">
-                        <svg viewBox="0 0 100 100" class="circular-chart">
-                            <defs>
-                                <linearGradient id="circle-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="#06b6d4" />
-                                    <stop offset="100%" stop-color="#8b5cf6" />
-                                </linearGradient>
-                                <linearGradient id="gradient-warning" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="#8b5cf6" />
-                                    <stop offset="100%" stop-color="#f59e0b" />
-                                </linearGradient>
-                                <linearGradient id="gradient-danger" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="#f59e0b" />
-                                    <stop offset="100%" stop-color="#ef4444" />
-                                </linearGradient>
-                            </defs>
-                            <circle class="circle-bg" cx="50" cy="50" r="45"></circle>
-                            <circle class="circle-bar" id="circle-progress" cx="50" cy="50" r="45"></circle>
-                        </svg>
-                        <div class="chart-center">
-                            <div class="chart-percent" id="chart-percent-text">0%</div>
-                            <div class="chart-label">Трафик</div>
-                        </div>
-                    </div>
-
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-label">Использовано</div>
-                            <div class="metric-value" id="metric-used">0 GB</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Осталось</div>
-                            <div class="metric-value" id="metric-remaining">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Лимит</div>
-                            <div class="metric-value" id="metric-total">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Сброс трафика</div>
-                            <div class="metric-value" id="metric-reset">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="progress-bar-wrap">
-                    <div class="progress-bar-fill" id="linear-progress-fill"></div>
-                </div>
-
-                <div class="stats-footer">
-                    <span id="stats-updated-time">Обновляется раз в час</span>
-                    <button class="refresh-btn" id="btn-refresh-stats" onclick="manualRefreshStats()">
-                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                        Обновить
-                    </button>
-                </div>
-                
-                <div class="link-box">
-                    <input type="text" id="sub-url" readonly value="Загрузка..." onclick="this.select()">
-                    <button class="copy-btn" onclick="copyLink()" id="copy-btn">Копировать</button>
-                </div>
-            </div>
-
-            <!-- 2. Service & Support (Расположен сразу под статистикой — виден без лишнего скролла!) -->
-            <div class="panel-section">
-                <h2 class="section-title">Сервис и поддержка <span class="section-subtitle">Telegram</span></h2>
-                <div class="service-grid">
-                    <a href="https://t.me/{{ BOT_USERNAME }}" target="_blank" class="service-card buy" id="buy-link">
-                        <div class="service-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="2" y="5" width="20" height="14" rx="3" ry="3"></rect>
-                                <line x1="2" y1="10" x2="22" y2="10"></line>
-                            </svg>
-                        </div>
-                        <div class="service-info">
-                            <span class="service-title">Продление</span>
-                            <span class="service-subtitle" id="buy-subtitle">@{{ BOT_USERNAME }}</span>
-                        </div>
-                    </a>
-                    
-                    <a href="https://t.me/{{ SUPPORT_BOT_USERNAME }}" target="_blank" class="service-card support" id="support-link">
-                        <div class="service-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                            </svg>
-                        </div>
-                        <div class="service-info">
-                            <span class="service-title">Поддержка</span>
-                            <span class="service-subtitle" id="support-subtitle">@{{ SUPPORT_BOT_USERNAME }}</span>
-                        </div>
-                    </a>
-                </div>
-            </div>
-
-            <!-- 3. Quick Connect (Apps) -->
-            <div class="panel-section">
-                <h2 class="section-title">Быстрое подключение <span class="section-subtitle">Клиенты</span></h2>
-                <div class="app-grid">
-                    <!-- Throne -->
-                    <div class="app-card">
-                        <div class="app-card-header">
-                            <div class="app-title-group">
-                                <span class="app-icon">👑</span>
-                                <span class="app-name">Throne</span>
-                            </div>
-                            <span class="app-platform">PC</span>
-                        </div>
-                        <button class="app-main-action primary" onclick="copyForThrone()">
-                            Скопировать для приложения
-                        </button>
-                        <div class="app-store-links">
-                            <a href="https://github.com/throneproj/throne/releases" target="_blank" class="app-store-btn">Скачать с GitHub</a>
-                        </div>
-                    </div>
-                    
-                    <!-- Hiddify -->
-                    <div class="app-card">
-                        <div class="app-card-header">
-                            <div class="app-title-group">
-                                <span class="app-icon">⚡</span>
-                                <span class="app-name">Hiddify</span>
-                            </div>
-                            <span class="app-platform">Mobile</span>
-                        </div>
-                        <a href="#" id="btn-hiddify" class="app-main-action cyan">
-                            Импортировать
-                        </a>
-                        <div class="app-store-links">
-                            <a href="https://play.google.com/store/apps/details?id=app.hiddify.com" target="_blank" class="app-store-btn">Android</a>
-                            <a href="https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532" target="_blank" class="app-store-btn">iOS</a>
-                        </div>
-                    </div>
-
-                    <!-- Incy -->
-                    <div class="app-card">
-                        <div class="app-card-header">
-                            <div class="app-title-group">
-                                <span class="app-icon">🛡️</span>
-                                <span class="app-name">Incy</span>
-                            </div>
-                            <span class="app-platform">Mobile</span>
-                        </div>
-                        <a href="#" id="btn-incy" class="app-main-action green">
-                            Импортировать
-                        </a>
-                        <div class="app-store-links">
-                            <a href="https://play.google.com/store/apps/details?id=llc.itdev.incy&hl=ru" target="_blank" class="app-store-btn">Android</a>
-                            <a href="https://apps.apple.com/app/incy/id6756943388" target="_blank" class="app-store-btn">iOS</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <header class="top fu">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div style="min-width:0">
+        <div class="brand-name" id="brand-title">{{ PROJECT_NAME }}</div>
+        <div class="brand-sub only-m" data-k="updated">Ваша подписка</div>
+        <div class="brand-sub only-d" id="brand-sub-d">Ваша подписка</div>
+      </div>
     </div>
+    <div class="top-actions" id="top-actions" hidden>
+      <span class="muted only-d" style="font-size:12.5px" data-k="updated"></span>
+      <button type="button" class="btn btn-g refresh" id="btn-refresh" aria-label="Обновить данные">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>
+        <span class="only-d">Обновить</span>
+      </button>
+    </div>
+  </header>
 
-    <script>
-        // Конфигурация названия проекта и домена панели 2S-UI
-        window.PROJECT_NAME = window.PROJECT_NAME || "VPN Service";
-        window.PANEL_DOMAIN = window.PANEL_DOMAIN || "";
-        window.PANEL_PORT = window.PANEL_PORT || "2096";
-        window.BOT_USERNAME = window.BOT_USERNAME || "your_vpn_bot";
-        window.SUPPORT_BOT_USERNAME = window.SUPPORT_BOT_USERNAME || "your_support_bot";
+  <!-- Нет ссылки на подписку -->
+  <section class="card empty fu d1" id="error-msg" hidden>
+    <div class="chip warn"><span class="dot"></span>Ссылка не указана</div>
+    <h2>Ссылка на подписку не найдена</h2>
+    <p>Чтобы увидеть статистику и подключиться, откройте персональную ссылку из Telegram-бота.</p>
+    <a class="btn btn-p shine" id="error-bot-link" href="https://t.me/{{ BOT_USERNAME }}" target="_blank" rel="noopener" style="width:100%">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4L3 11l6 2.5M21 4l-3 16-9-6.5M21 4L9 13.5V19l3-3.5"/></svg>
+      <span id="error-bot-text">Открыть Telegram-бот</span>
+    </a>
+  </section>
 
-        const currentHost = window.location.hostname;
-        const rootDomain = (window.PANEL_DOMAIN && !window.PANEL_DOMAIN.includes("{{")) 
-            ? window.PANEL_DOMAIN 
-            : (currentHost ? currentHost.replace(/^sub\./i, '') : "");
-        const panelPort = window.PANEL_PORT || "2096";
+  <div id="main-content" hidden>
+    <div class="layout">
 
-        // Название проекта на странице
-        const brandEl = document.getElementById("brand-title");
-        const initialBrand = (brandEl && brandEl.textContent && !brandEl.textContent.includes("{{")) ? brandEl.textContent.trim() : "";
-        const projectName = (window.PROJECT_NAME && !window.PROJECT_NAME.includes("{{")) 
-            ? window.PROJECT_NAME 
-            : (initialBrand || rootDomain || "VPN");
+      <div class="col-left">
+        <!-- Статус подписки -->
+        <section class="card status fu d1" aria-labelledby="status-title">
+          <h2 class="sr-only" id="status-title">Статус подписки</h2>
+          <div class="row-between">
+            <div class="status-info">
+              <div class="chip" id="status-chip"><span class="dot"></span><span id="status-text">Загрузка…</span></div>
+              <div class="days" id="days-wrap">
+                <span class="days-num num sk" id="days-num" style="min-width:56px;color:transparent">00</span>
+                <span class="days-word" id="days-word"></span>
+              </div>
+              <span class="expiry" id="expiry-text">&nbsp;</span>
+            </div>
+            <div class="ring ring-mini only-m">
+              <svg width="84" height="84" viewBox="0 0 100 100" role="img" aria-label="Расход трафика">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="9"/>
+                <circle class="bar" data-ring="45" cx="50" cy="50" r="45" fill="none" stroke="#635bff" stroke-width="9" stroke-linecap="round" stroke-dasharray="282.74" stroke-dashoffset="282.74"/>
+              </svg>
+              <div class="ring-center"><span class="pct num" data-k="pct">—</span><span class="lbl">трафика</span></div>
+            </div>
+          </div>
+          <div class="only-m divider"></div>
+          <div class="only-m mini-line">
+            <span><b class="num" data-k="used">—</b> <span class="muted">из <span data-k="total">—</span></span></span>
+            <span class="muted" data-k="reset-short"></span>
+          </div>
+        </section>
 
-        if (projectName) {
-            document.title = "Настройка VPN - " + projectName;
-            if (brandEl) {
-                brandEl.textContent = projectName;
+        <!-- Трафик (ПК) -->
+        <section class="card traffic only-d fu d2" aria-labelledby="traffic-title">
+          <div class="row-between">
+            <h2 id="traffic-title">Трафик за месяц</h2>
+            <span class="muted" style="font-size:12.5px" data-k="limit-label"></span>
+          </div>
+          <div class="traffic-body" id="traffic-skeleton">
+            <div class="sk" style="width:156px;height:156px;border-radius:50%"></div>
+            <div class="tiles3">
+              <div class="sk" style="height:62px;border-radius:12px"></div>
+              <div class="sk" style="height:62px;border-radius:12px"></div>
+              <div class="sk" style="height:62px;border-radius:12px"></div>
+            </div>
+          </div>
+          <div class="traffic-body" id="traffic-ready" hidden>
+            <div class="ring ring-big">
+              <svg width="156" height="156" viewBox="0 0 100 100" role="img" aria-label="Расход трафика">
+                <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="7"/>
+                <circle class="bar" data-ring="44" cx="50" cy="50" r="44" fill="none" stroke="#635bff" stroke-width="7" stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="276.46"/>
+              </svg>
+              <div class="ring-center"><span class="pct num" data-k="pct">—</span><span class="lbl">использовано</span></div>
+            </div>
+            <div class="tiles3">
+              <div class="stat"><span class="k">Использовано</span><span class="v num" data-k="used">—</span></div>
+              <div class="stat"><span class="k">Осталось</span><span class="v num good" data-k="rem">—</span></div>
+              <div class="stat"><span class="k" data-k="third-k">Сброс через</span><span class="v" data-k="third-v">—</span></div>
+            </div>
+          </div>
+          <div class="traffic-body load-error" id="traffic-error" hidden>
+            <span>Не удалось загрузить статистику.</span>
+            <button type="button" class="btn btn-g btn-sm" data-action="retry">Попробовать снова</button>
+          </div>
+          <div class="foot-note" id="reset-note" hidden>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+            <span data-k="reset-long"></span>
+          </div>
+        </section>
+      </div>
+
+      <!-- Подключение -->
+      <section class="card connect fu d2" aria-labelledby="connect-title">
+        <div class="row-between" style="align-items:flex-start">
+          <div>
+            <h2 id="connect-title">Подключение</h2>
+            <div class="connect-sub only-d">На компьютере — через приложение, на телефон — по QR-коду.</div>
+          </div>
+          <span class="device-chip" id="device-chip"></span>
+        </div>
+
+        <div class="seg only-m" role="group" aria-label="Приложение для подключения">
+          <div class="seg-ind" id="seg-ind" aria-hidden="true"></div>
+          <button type="button" data-app="hiddify" aria-pressed="false">Hiddify</button>
+          <button type="button" data-app="incy" aria-pressed="false">Incy</button>
+          <button type="button" data-app="throne" aria-pressed="false">Throne</button>
+        </div>
+
+        <div class="connect-body">
+          <div class="connect-main">
+            <div class="action" id="action"></div>
+
+            <div class="link-label only-m" id="link-label">Ссылка на подписку</div>
+            <div class="link-row">
+              <div class="link-box" id="sub-url" aria-labelledby="link-label"></div>
+              <button type="button" class="btn btn-g copy-btn" id="copy-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                <span id="copy-text">Копировать<span class="only-m"> ссылку</span></span>
+              </button>
+            </div>
+            <div class="hint" id="hint"></div>
+          </div>
+
+          <div class="vsep only-d"></div>
+          <div class="qr only-d" id="qr-wrap">
+            <div class="qr-box" id="qr" role="img" aria-label="QR-код этой страницы"></div>
+            <span class="qr-cap">Наведите камеру телефона — откроется эта страница</span>
+          </div>
+        </div>
+
+        <div class="apps only-d" id="apps"></div>
+      </section>
+    </div>
+  </div>
+
+  <nav class="tiles fu d3" id="tiles" aria-label="Telegram" hidden>
+    <a class="tile" id="renew-link" href="https://t.me/{{ BOT_USERNAME }}" target="_blank" rel="noopener">
+      <span class="tile-ico" style="background:rgba(99,91,255,.14);color:var(--brand-ink)" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></svg>
+      </span>
+      <span class="tile-txt"><b><span class="only-m">Продлить</span><span class="only-d">Продлить подписку</span></b><span class="only-d" id="renew-sub">@{{ BOT_USERNAME }}</span></span>
+      <svg class="tile-arrow only-d" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </a>
+    <a class="tile" id="support-link" href="https://t.me/{{ SUPPORT_BOT_USERNAME }}" target="_blank" rel="noopener">
+      <span class="tile-ico" style="background:rgba(27,199,216,.12);color:var(--cyan)" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+      </span>
+      <span class="tile-txt"><b>Поддержка</b><span class="only-d" id="support-sub">@{{ SUPPORT_BOT_USERNAME }}</span></span>
+      <svg class="tile-arrow only-d" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </a>
+  </nav>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <div class="toast-ico" aria-hidden="true">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+  </div>
+  <div class="toast-txt"><b id="toast-title"></b><span id="toast-desc"></span></div>
+</div>
+
+<!-- QR Code Generator for JavaScript, (c) 2009 Kazuhiko Arase, MIT License — https://github.com/kazuhikoarase/qrcode-generator -->
+<script>
+//---------------------------------------------------------------------
+//
+// QR Code Generator for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//  http://www.opensource.org/licenses/mit-license.php
+//
+// The word 'QR Code' is registered trademark of
+// DENSO WAVE INCORPORATED
+//  http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+
+var qrcode = function() {
+
+  //---------------------------------------------------------------------
+  // qrcode
+  //---------------------------------------------------------------------
+
+  /**
+   * qrcode
+   * @param typeNumber 1 to 40
+   * @param errorCorrectionLevel 'L','M','Q','H'
+   */
+  var qrcode = function(typeNumber, errorCorrectionLevel) {
+
+    var PAD0 = 0xEC;
+    var PAD1 = 0x11;
+
+    var _typeNumber = typeNumber;
+    var _errorCorrectionLevel = QRErrorCorrectionLevel[errorCorrectionLevel];
+    var _modules = null;
+    var _moduleCount = 0;
+    var _dataCache = null;
+    var _dataList = [];
+
+    var _this = {};
+
+    var makeImpl = function(test, maskPattern) {
+
+      _moduleCount = _typeNumber * 4 + 17;
+      _modules = function(moduleCount) {
+        var modules = new Array(moduleCount);
+        for (var row = 0; row < moduleCount; row += 1) {
+          modules[row] = new Array(moduleCount);
+          for (var col = 0; col < moduleCount; col += 1) {
+            modules[row][col] = null;
+          }
+        }
+        return modules;
+      }(_moduleCount);
+
+      setupPositionProbePattern(0, 0);
+      setupPositionProbePattern(_moduleCount - 7, 0);
+      setupPositionProbePattern(0, _moduleCount - 7);
+      setupPositionAdjustPattern();
+      setupTimingPattern();
+      setupTypeInfo(test, maskPattern);
+
+      if (_typeNumber >= 7) {
+        setupTypeNumber(test);
+      }
+
+      if (_dataCache == null) {
+        _dataCache = createData(_typeNumber, _errorCorrectionLevel, _dataList);
+      }
+
+      mapData(_dataCache, maskPattern);
+    };
+
+    var setupPositionProbePattern = function(row, col) {
+
+      for (var r = -1; r <= 7; r += 1) {
+
+        if (row + r <= -1 || _moduleCount <= row + r) continue;
+
+        for (var c = -1; c <= 7; c += 1) {
+
+          if (col + c <= -1 || _moduleCount <= col + c) continue;
+
+          if ( (0 <= r && r <= 6 && (c == 0 || c == 6) )
+              || (0 <= c && c <= 6 && (r == 0 || r == 6) )
+              || (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+            _modules[row + r][col + c] = true;
+          } else {
+            _modules[row + r][col + c] = false;
+          }
+        }
+      }
+    };
+
+    var getBestMaskPattern = function() {
+
+      var minLostPoint = 0;
+      var pattern = 0;
+
+      for (var i = 0; i < 8; i += 1) {
+
+        makeImpl(true, i);
+
+        var lostPoint = QRUtil.getLostPoint(_this);
+
+        if (i == 0 || minLostPoint > lostPoint) {
+          minLostPoint = lostPoint;
+          pattern = i;
+        }
+      }
+
+      return pattern;
+    };
+
+    var setupTimingPattern = function() {
+
+      for (var r = 8; r < _moduleCount - 8; r += 1) {
+        if (_modules[r][6] != null) {
+          continue;
+        }
+        _modules[r][6] = (r % 2 == 0);
+      }
+
+      for (var c = 8; c < _moduleCount - 8; c += 1) {
+        if (_modules[6][c] != null) {
+          continue;
+        }
+        _modules[6][c] = (c % 2 == 0);
+      }
+    };
+
+    var setupPositionAdjustPattern = function() {
+
+      var pos = QRUtil.getPatternPosition(_typeNumber);
+
+      for (var i = 0; i < pos.length; i += 1) {
+
+        for (var j = 0; j < pos.length; j += 1) {
+
+          var row = pos[i];
+          var col = pos[j];
+
+          if (_modules[row][col] != null) {
+            continue;
+          }
+
+          for (var r = -2; r <= 2; r += 1) {
+
+            for (var c = -2; c <= 2; c += 1) {
+
+              if (r == -2 || r == 2 || c == -2 || c == 2
+                  || (r == 0 && c == 0) ) {
+                _modules[row + r][col + c] = true;
+              } else {
+                _modules[row + r][col + c] = false;
+              }
             }
+          }
         }
+      }
+    };
 
-        // Обновление ссылок на Telegram-ботов
-        const cleanBot = (window.BOT_USERNAME && !window.BOT_USERNAME.includes("{{")) ? window.BOT_USERNAME.replace(/^@/, '') : "your_vpn_bot";
-        const cleanSupport = (window.SUPPORT_BOT_USERNAME && !window.SUPPORT_BOT_USERNAME.includes("{{")) ? window.SUPPORT_BOT_USERNAME.replace(/^@/, '') : "your_support_bot";
+    var setupTypeNumber = function(test) {
 
-        const buyLink = document.getElementById("buy-link");
-        const buySub = document.getElementById("buy-subtitle");
-        if (buyLink) buyLink.href = "https://t.me/" + cleanBot;
-        if (buySub) buySub.textContent = "@" + cleanBot;
+      var bits = QRUtil.getBCHTypeNumber(_typeNumber);
 
-        const supLink = document.getElementById("support-link");
-        const supSub = document.getElementById("support-subtitle");
-        if (supLink) supLink.href = "https://t.me/" + cleanSupport;
-        if (supSub) supSub.textContent = "@" + cleanSupport;
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[Math.floor(i / 3)][i % 3 + _moduleCount - 8 - 3] = mod;
+      }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        let subPath = urlParams.get('url');
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[i % 3 + _moduleCount - 8 - 3][Math.floor(i / 3)] = mod;
+      }
+    };
 
-        if (!subPath && window.location.pathname.length > 1) {
-            subPath = window.location.pathname;
-        }
+    var setupTypeInfo = function(test, maskPattern) {
 
-        const username = subPath ? subPath.replace(/^\/+/, '').split('/')[0] : '';
-        const CACHE_TTL_MS = 3600 * 1000; // 1 час
-        const CIRCLE_CIRCUMFERENCE = 283; // 2 * pi * 45
+      var data = (_errorCorrectionLevel << 3) | maskPattern;
+      var bits = QRUtil.getBCHTypeInfo(data);
 
-        if (subPath && subPath !== "/") {
-            const cleanPath = subPath.startsWith('/') ? subPath : '/' + subPath;
-            const subBase = (window.PANEL_SUB_URL || ("https://" + rootDomain + ":" + panelPort + "/sub")).replace(/\/+$/, '');
-            const fullSubUrl = subBase + cleanPath;
-            
-            document.getElementById('sub-url').value = fullSubUrl;
-            document.getElementById('btn-hiddify').href = "hiddify://import/" + fullSubUrl;
-            document.getElementById('btn-incy').href = "incy://add/" + encodeURIComponent(fullSubUrl);
+      // vertical
+      for (var i = 0; i < 15; i += 1) {
 
-            // Инициализация загрузки статистики подписки
-            initSubscriptionStats(username);
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 6) {
+          _modules[i][8] = mod;
+        } else if (i < 8) {
+          _modules[i + 1][8] = mod;
         } else {
-            document.getElementById('main-content').style.display = 'none';
-            document.getElementById('error-msg').style.display = 'block';
+          _modules[_moduleCount - 15 + i][8] = mod;
         }
+      }
 
-        function copyLink() {
-            const input = document.getElementById('sub-url');
-            input.select();
-            input.setSelectionRange(0, 99999);
-            
-            navigator.clipboard.writeText(input.value).then(() => {
-                const btn = document.getElementById('copy-btn');
-                btn.innerText = "Скопировано!";
-                btn.style.backgroundColor = "var(--success)";
-                btn.style.borderColor = "var(--success)";
-                btn.style.color = "white";
-                setTimeout(() => {
-                    btn.innerText = "Копировать";
-                    btn.style.backgroundColor = "var(--bg-panel)";
-                    btn.style.borderColor = "var(--border)";
-                    btn.style.color = "var(--text-main)";
-                }, 2000);
-            });
+      // horizontal
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 8) {
+          _modules[8][_moduleCount - i - 1] = mod;
+        } else if (i < 9) {
+          _modules[8][15 - i - 1 + 1] = mod;
+        } else {
+          _modules[8][15 - i - 1] = mod;
         }
+      }
 
-        function showToast(title, desc, icon = "👑") {
-            const toast = document.getElementById('toast-notification');
-            if (!toast) return;
-            document.getElementById('toast-title').textContent = title;
-            document.getElementById('toast-desc').textContent = desc;
-            document.getElementById('toast-icon').textContent = icon;
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3500);
-        }
+      // fixed module
+      _modules[_moduleCount - 8][8] = (!test);
+    };
 
-        function copyForThrone() {
-            const url = document.getElementById('sub-url').value;
-            navigator.clipboard.writeText(url).then(() => {
-                showToast("Ссылка скопирована!", "Откройте Throne и нажмите Ctrl+V на главном экране для импорта.", "👑");
-            });
-        }
+    var mapData = function(data, maskPattern) {
 
-        /* ------------------ СТАТИСТИКА И ОБНОВЛЕНИЕ РАЗ В ЧАС ------------------ */
+      var inc = -1;
+      var row = _moduleCount - 1;
+      var bitIndex = 7;
+      var byteIndex = 0;
+      var maskFunc = QRUtil.getMaskFunction(maskPattern);
 
-        function initSubscriptionStats(user) {
-            if (!user) return;
-            const statsCard = document.getElementById('stats-card');
-            statsCard.style.display = 'block';
-            document.getElementById('stats-username').textContent = user;
+      for (var col = _moduleCount - 1; col > 0; col -= 2) {
 
-            const cacheKey = 'vpn_sub_stats_' + user;
-            const cachedRaw = localStorage.getItem(cacheKey);
+        if (col == 6) col -= 1;
 
-            if (cachedRaw) {
-                try {
-                    const cached = JSON.parse(cachedRaw);
-                    const age = Date.now() - cached.timestamp;
-                    if (age < CACHE_TTL_MS) {
-                        renderStats(cached.data);
-                        updateAgeLabel(cached.timestamp);
-                        setupPeriodicRefresh(user);
-                        return;
-                    }
-                } catch (e) {
-                    console.warn("Ошибка чтения кэша:", e);
-                }
+        while (true) {
+
+          for (var c = 0; c < 2; c += 1) {
+
+            if (_modules[row][col - c] == null) {
+
+              var dark = false;
+
+              if (byteIndex < data.length) {
+                dark = ( ( (data[byteIndex] >>> bitIndex) & 1) == 1);
+              }
+
+              var mask = maskFunc(row, col - c);
+
+              if (mask) {
+                dark = !dark;
+              }
+
+              _modules[row][col - c] = dark;
+              bitIndex -= 1;
+
+              if (bitIndex == -1) {
+                byteIndex += 1;
+                bitIndex = 7;
+              }
             }
+          }
 
-            fetchStats(user);
-            setupPeriodicRefresh(user);
+          row += inc;
+
+          if (row < 0 || _moduleCount <= row) {
+            row -= inc;
+            inc = -inc;
+            break;
+          }
+        }
+      }
+    };
+
+    var createBytes = function(buffer, rsBlocks) {
+
+      var offset = 0;
+
+      var maxDcCount = 0;
+      var maxEcCount = 0;
+
+      var dcdata = new Array(rsBlocks.length);
+      var ecdata = new Array(rsBlocks.length);
+
+      for (var r = 0; r < rsBlocks.length; r += 1) {
+
+        var dcCount = rsBlocks[r].dataCount;
+        var ecCount = rsBlocks[r].totalCount - dcCount;
+
+        maxDcCount = Math.max(maxDcCount, dcCount);
+        maxEcCount = Math.max(maxEcCount, ecCount);
+
+        dcdata[r] = new Array(dcCount);
+
+        for (var i = 0; i < dcdata[r].length; i += 1) {
+          dcdata[r][i] = 0xff & buffer.getBuffer()[i + offset];
+        }
+        offset += dcCount;
+
+        var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+        var rawPoly = qrPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+        var modPoly = rawPoly.mod(rsPoly);
+        ecdata[r] = new Array(rsPoly.getLength() - 1);
+        for (var i = 0; i < ecdata[r].length; i += 1) {
+          var modIndex = i + modPoly.getLength() - ecdata[r].length;
+          ecdata[r][i] = (modIndex >= 0)? modPoly.getAt(modIndex) : 0;
+        }
+      }
+
+      var totalCodeCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalCodeCount += rsBlocks[i].totalCount;
+      }
+
+      var data = new Array(totalCodeCount);
+      var index = 0;
+
+      for (var i = 0; i < maxDcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < dcdata[r].length) {
+            data[index] = dcdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      for (var i = 0; i < maxEcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < ecdata[r].length) {
+            data[index] = ecdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      return data;
+    };
+
+    var createData = function(typeNumber, errorCorrectionLevel, dataList) {
+
+      var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectionLevel);
+
+      var buffer = qrBitBuffer();
+
+      for (var i = 0; i < dataList.length; i += 1) {
+        var data = dataList[i];
+        buffer.put(data.getMode(), 4);
+        buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+        data.write(buffer);
+      }
+
+      // calc num max data.
+      var totalDataCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalDataCount += rsBlocks[i].dataCount;
+      }
+
+      if (buffer.getLengthInBits() > totalDataCount * 8) {
+        throw 'code length overflow. ('
+          + buffer.getLengthInBits()
+          + '>'
+          + totalDataCount * 8
+          + ')';
+      }
+
+      // end code
+      if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+        buffer.put(0, 4);
+      }
+
+      // padding
+      while (buffer.getLengthInBits() % 8 != 0) {
+        buffer.putBit(false);
+      }
+
+      // padding
+      while (true) {
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD0, 8);
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD1, 8);
+      }
+
+      return createBytes(buffer, rsBlocks);
+    };
+
+    _this.addData = function(data, mode) {
+
+      mode = mode || 'Byte';
+
+      var newData = null;
+
+      switch(mode) {
+      case 'Numeric' :
+        newData = qrNumber(data);
+        break;
+      case 'Alphanumeric' :
+        newData = qrAlphaNum(data);
+        break;
+      case 'Byte' :
+        newData = qr8BitByte(data);
+        break;
+      case 'Kanji' :
+        newData = qrKanji(data);
+        break;
+      default :
+        throw 'mode:' + mode;
+      }
+
+      _dataList.push(newData);
+      _dataCache = null;
+    };
+
+    _this.isDark = function(row, col) {
+      if (row < 0 || _moduleCount <= row || col < 0 || _moduleCount <= col) {
+        throw row + ',' + col;
+      }
+      return _modules[row][col];
+    };
+
+    _this.getModuleCount = function() {
+      return _moduleCount;
+    };
+
+    _this.make = function() {
+      if (_typeNumber < 1) {
+        var typeNumber = 1;
+
+        for (; typeNumber < 40; typeNumber++) {
+          var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, _errorCorrectionLevel);
+          var buffer = qrBitBuffer();
+
+          for (var i = 0; i < _dataList.length; i++) {
+            var data = _dataList[i];
+            buffer.put(data.getMode(), 4);
+            buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+            data.write(buffer);
+          }
+
+          var totalDataCount = 0;
+          for (var i = 0; i < rsBlocks.length; i++) {
+            totalDataCount += rsBlocks[i].dataCount;
+          }
+
+          if (buffer.getLengthInBits() <= totalDataCount * 8) {
+            break;
+          }
         }
 
-        function setupPeriodicRefresh(user) {
-            setInterval(() => {
-                fetchStats(user, false);
-            }, CACHE_TTL_MS);
+        _typeNumber = typeNumber;
+      }
+
+      makeImpl(false, getBestMaskPattern() );
+    };
+
+    _this.createTableTag = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var qrHtml = '';
+
+      qrHtml += '<table style="';
+      qrHtml += ' border-width: 0px; border-style: none;';
+      qrHtml += ' border-collapse: collapse;';
+      qrHtml += ' padding: 0px; margin: ' + margin + 'px;';
+      qrHtml += '">';
+      qrHtml += '<tbody>';
+
+      for (var r = 0; r < _this.getModuleCount(); r += 1) {
+
+        qrHtml += '<tr>';
+
+        for (var c = 0; c < _this.getModuleCount(); c += 1) {
+          qrHtml += '<td style="';
+          qrHtml += ' border-width: 0px; border-style: none;';
+          qrHtml += ' border-collapse: collapse;';
+          qrHtml += ' padding: 0px; margin: 0px;';
+          qrHtml += ' width: ' + cellSize + 'px;';
+          qrHtml += ' height: ' + cellSize + 'px;';
+          qrHtml += ' background-color: ';
+          qrHtml += _this.isDark(r, c)? '#000000' : '#ffffff';
+          qrHtml += ';';
+          qrHtml += '"/>';
         }
 
-        async function fetchStats(user, isManual = false) {
-            const refreshBtn = document.getElementById('btn-refresh-stats');
-            if (isManual) refreshBtn.classList.add('spinning');
+        qrHtml += '</tr>';
+      }
 
-            try {
-                const url = `/api/subscription/${encodeURIComponent(user)}` + (isManual ? `?t=${Date.now()}` : '');
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
+      qrHtml += '</tbody>';
+      qrHtml += '</table>';
 
-                const cachePayload = {
-                    timestamp: Date.now(),
-                    data: data
-                };
-                localStorage.setItem('vpn_sub_stats_' + user, JSON.stringify(cachePayload));
+      return qrHtml;
+    };
 
-                renderStats(data);
-                updateAgeLabel(Date.now());
-            } catch (err) {
-                console.error("Не удалось загрузить данные о подписке:", err);
-            } finally {
-                if (isManual) {
-                    setTimeout(() => refreshBtn.classList.remove('spinning'), 500);
-                }
-            }
+    _this.createSvgTag = function(cellSize, margin, alt, title) {
+
+      var opts = {};
+      if (typeof arguments[0] == 'object') {
+        // Called by options.
+        opts = arguments[0];
+        // overwrite cellSize and margin.
+        cellSize = opts.cellSize;
+        margin = opts.margin;
+        alt = opts.alt;
+        title = opts.title;
+      }
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      // Compose alt property surrogate
+      alt = (typeof alt === 'string') ? {text: alt} : alt || {};
+      alt.text = alt.text || null;
+      alt.id = (alt.text) ? alt.id || 'qrcode-description' : null;
+
+      // Compose title property surrogate
+      title = (typeof title === 'string') ? {text: title} : title || {};
+      title.text = title.text || null;
+      title.id = (title.text) ? title.id || 'qrcode-title' : null;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var c, mc, r, mr, qrSvg='', rect;
+
+      rect = 'l' + cellSize + ',0 0,' + cellSize +
+        ' -' + cellSize + ',0 0,-' + cellSize + 'z ';
+
+      qrSvg += '<svg version="1.1" xmlns="http://www.w3.org/2000/svg"';
+      qrSvg += !opts.scalable ? ' width="' + size + 'px" height="' + size + 'px"' : '';
+      qrSvg += ' viewBox="0 0 ' + size + ' ' + size + '" ';
+      qrSvg += ' preserveAspectRatio="xMinYMin meet"';
+      qrSvg += (title.text || alt.text) ? ' role="img" aria-labelledby="' +
+          escapeXml([title.id, alt.id].join(' ').trim() ) + '"' : '';
+      qrSvg += '>';
+      qrSvg += (title.text) ? '<title id="' + escapeXml(title.id) + '">' +
+          escapeXml(title.text) + '</title>' : '';
+      qrSvg += (alt.text) ? '<description id="' + escapeXml(alt.id) + '">' +
+          escapeXml(alt.text) + '</description>' : '';
+      qrSvg += '<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>';
+      qrSvg += '<path d="';
+
+      for (r = 0; r < _this.getModuleCount(); r += 1) {
+        mr = r * cellSize + margin;
+        for (c = 0; c < _this.getModuleCount(); c += 1) {
+          if (_this.isDark(r, c) ) {
+            mc = c*cellSize+margin;
+            qrSvg += 'M' + mc + ',' + mr + rect;
+          }
+        }
+      }
+
+      qrSvg += '" stroke="transparent" fill="black"/>';
+      qrSvg += '</svg>';
+
+      return qrSvg;
+    };
+
+    _this.createDataURL = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      return createDataURL(size, size, function(x, y) {
+        if (min <= x && x < max && min <= y && y < max) {
+          var c = Math.floor( (x - min) / cellSize);
+          var r = Math.floor( (y - min) / cellSize);
+          return _this.isDark(r, c)? 0 : 1;
+        } else {
+          return 1;
+        }
+      } );
+    };
+
+    _this.createImgTag = function(cellSize, margin, alt) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+
+      var img = '';
+      img += '<img';
+      img += '\u0020src="';
+      img += _this.createDataURL(cellSize, margin);
+      img += '"';
+      img += '\u0020width="';
+      img += size;
+      img += '"';
+      img += '\u0020height="';
+      img += size;
+      img += '"';
+      if (alt) {
+        img += '\u0020alt="';
+        img += escapeXml(alt);
+        img += '"';
+      }
+      img += '/>';
+
+      return img;
+    };
+
+    var escapeXml = function(s) {
+      var escaped = '';
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charAt(i);
+        switch(c) {
+        case '<': escaped += '&lt;'; break;
+        case '>': escaped += '&gt;'; break;
+        case '&': escaped += '&amp;'; break;
+        case '"': escaped += '&quot;'; break;
+        default : escaped += c; break;
+        }
+      }
+      return escaped;
+    };
+
+    var _createHalfASCII = function(margin) {
+      var cellSize = 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r1, r2, p;
+
+      var blocks = {
+        '██': '█',
+        '█ ': '▀',
+        ' █': '▄',
+        '  ': ' '
+      };
+
+      var blocksLastLineNoMargin = {
+        '██': '▀',
+        '█ ': '▀',
+        ' █': ' ',
+        '  ': ' '
+      };
+
+      var ascii = '';
+      for (y = 0; y < size; y += 2) {
+        r1 = Math.floor((y - min) / cellSize);
+        r2 = Math.floor((y + 1 - min) / cellSize);
+        for (x = 0; x < size; x += 1) {
+          p = '█';
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r1, Math.floor((x - min) / cellSize))) {
+            p = ' ';
+          }
+
+          if (min <= x && x < max && min <= y+1 && y+1 < max && _this.isDark(r2, Math.floor((x - min) / cellSize))) {
+            p += ' ';
+          }
+          else {
+            p += '█';
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          ascii += (margin < 1 && y+1 >= max) ? blocksLastLineNoMargin[p] : blocks[p];
         }
 
-        function manualRefreshStats() {
-            if (username) {
-                fetchStats(username, true);
-            }
+        ascii += '\n';
+      }
+
+      if (size % 2 && margin > 0) {
+        return ascii.substring(0, ascii.length - size - 1) + Array(size+1).join('▀');
+      }
+
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.createASCII = function(cellSize, margin) {
+      cellSize = cellSize || 1;
+
+      if (cellSize < 2) {
+        return _createHalfASCII(margin);
+      }
+
+      cellSize -= 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r, p;
+
+      var white = Array(cellSize+1).join('██');
+      var black = Array(cellSize+1).join('  ');
+
+      var ascii = '';
+      var line = '';
+      for (y = 0; y < size; y += 1) {
+        r = Math.floor( (y - min) / cellSize);
+        line = '';
+        for (x = 0; x < size; x += 1) {
+          p = 1;
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r, Math.floor((x - min) / cellSize))) {
+            p = 0;
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          line += p ? white : black;
         }
 
-        function renderStats(data) {
-            const expiryBadge = document.getElementById('expiry-badge');
-            const expiryText = document.getElementById('expiry-text');
+        for (r = 0; r < cellSize; r += 1) {
+          ascii += line + '\n';
+        }
+      }
 
-            if (!data.enable || data.is_expired) {
-                expiryBadge.className = 'status-badge expired';
-                expiryText.textContent = data.is_expired ? 'Истекла' : 'Отключена';
-            } else if (data.is_unlimited_expiry) {
-                expiryBadge.className = 'status-badge';
-                expiryText.textContent = 'Бессрочно';
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.renderTo2dContext = function(context, cellSize) {
+      cellSize = cellSize || 2;
+      var length = _this.getModuleCount();
+      for (var row = 0; row < length; row++) {
+        for (var col = 0; col < length; col++) {
+          context.fillStyle = _this.isDark(row, col) ? 'black' : 'white';
+          context.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrcode.stringToBytes
+  //---------------------------------------------------------------------
+
+  qrcode.stringToBytesFuncs = {
+    'default' : function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        bytes.push(c & 0xff);
+      }
+      return bytes;
+    }
+  };
+
+  qrcode.stringToBytes = qrcode.stringToBytesFuncs['default'];
+
+  //---------------------------------------------------------------------
+  // qrcode.createStringToBytes
+  //---------------------------------------------------------------------
+
+  /**
+   * @param unicodeData base64 string of byte array.
+   * [16bit Unicode],[16bit Bytes], ...
+   * @param numChars
+   */
+  qrcode.createStringToBytes = function(unicodeData, numChars) {
+
+    // create conversion map.
+
+    var unicodeMap = function() {
+
+      var bin = base64DecodeInputStream(unicodeData);
+      var read = function() {
+        var b = bin.read();
+        if (b == -1) throw 'eof';
+        return b;
+      };
+
+      var count = 0;
+      var unicodeMap = {};
+      while (true) {
+        var b0 = bin.read();
+        if (b0 == -1) break;
+        var b1 = read();
+        var b2 = read();
+        var b3 = read();
+        var k = String.fromCharCode( (b0 << 8) | b1);
+        var v = (b2 << 8) | b3;
+        unicodeMap[k] = v;
+        count += 1;
+      }
+      if (count != numChars) {
+        throw count + ' != ' + numChars;
+      }
+
+      return unicodeMap;
+    }();
+
+    var unknownChar = '?'.charCodeAt(0);
+
+    return function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        if (c < 128) {
+          bytes.push(c);
+        } else {
+          var b = unicodeMap[s.charAt(i)];
+          if (typeof b == 'number') {
+            if ( (b & 0xff) == b) {
+              // 1byte
+              bytes.push(b);
             } else {
-                const days = data.days_left;
-                if (days !== null && days <= 5) {
-                    expiryBadge.className = 'status-badge warning';
-                } else {
-                    expiryBadge.className = 'status-badge';
-                }
-                const daysStr = days !== null ? ` (ост. ${days} дн.)` : '';
-                expiryText.textContent = `До ${data.expiry_formatted}${daysStr}`;
+              // 2bytes
+              bytes.push(b >>> 8);
+              bytes.push(b & 0xff);
             }
+          } else {
+            bytes.push(unknownChar);
+          }
+        }
+      }
+      return bytes;
+    };
+  };
 
-            document.getElementById('metric-used').textContent = data.used_formatted;
-            document.getElementById('metric-remaining').textContent = data.remaining_formatted;
-            document.getElementById('metric-total').textContent = data.volume_formatted;
-            document.getElementById('metric-reset').textContent = data.next_reset_formatted || '—';
+  //---------------------------------------------------------------------
+  // QRMode
+  //---------------------------------------------------------------------
 
-            const percent = data.is_unlimited_traffic ? 0 : data.used_percent;
-            const circleBar = document.getElementById('circle-progress');
-            const linearBar = document.getElementById('linear-progress-fill');
-            const percentText = document.getElementById('chart-percent-text');
+  var QRMode = {
+    MODE_NUMBER :    1 << 0,
+    MODE_ALPHA_NUM : 1 << 1,
+    MODE_8BIT_BYTE : 1 << 2,
+    MODE_KANJI :     1 << 3
+  };
 
-            if (data.is_unlimited_traffic) {
-                percentText.textContent = '∞';
-                circleBar.style.stroke = 'url(#circle-gradient)';
-                circleBar.style.strokeDashoffset = 0;
-                linearBar.style.width = '100%';
-                linearBar.style.background = 'var(--accent-cyan)';
-            } else {
-                percentText.textContent = `${Math.round(percent)}%`;
+  //---------------------------------------------------------------------
+  // QRErrorCorrectionLevel
+  //---------------------------------------------------------------------
 
-                let gradientUrl = 'url(#circle-gradient)';
-                let barColor = 'linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))';
+  var QRErrorCorrectionLevel = {
+    L : 1,
+    M : 0,
+    Q : 3,
+    H : 2
+  };
 
-                if (percent >= 90) {
-                    gradientUrl = 'url(#gradient-danger)';
-                    barColor = 'linear-gradient(90deg, var(--warning), var(--danger))';
-                } else if (percent >= 70) {
-                    gradientUrl = 'url(#gradient-warning)';
-                    barColor = 'linear-gradient(90deg, var(--accent-purple), var(--warning))';
-                }
+  //---------------------------------------------------------------------
+  // QRMaskPattern
+  //---------------------------------------------------------------------
 
-                circleBar.style.stroke = gradientUrl;
-                linearBar.style.background = barColor;
+  var QRMaskPattern = {
+    PATTERN000 : 0,
+    PATTERN001 : 1,
+    PATTERN010 : 2,
+    PATTERN011 : 3,
+    PATTERN100 : 4,
+    PATTERN101 : 5,
+    PATTERN110 : 6,
+    PATTERN111 : 7
+  };
 
-                const offset = CIRCLE_CIRCUMFERENCE - (CIRCLE_CIRCUMFERENCE * (percent / 100));
-                circleBar.style.strokeDashoffset = offset;
-                linearBar.style.width = `${percent}%`;
-            }
+  //---------------------------------------------------------------------
+  // QRUtil
+  //---------------------------------------------------------------------
+
+  var QRUtil = function() {
+
+    var PATTERN_POSITION_TABLE = [
+      [],
+      [6, 18],
+      [6, 22],
+      [6, 26],
+      [6, 30],
+      [6, 34],
+      [6, 22, 38],
+      [6, 24, 42],
+      [6, 26, 46],
+      [6, 28, 50],
+      [6, 30, 54],
+      [6, 32, 58],
+      [6, 34, 62],
+      [6, 26, 46, 66],
+      [6, 26, 48, 70],
+      [6, 26, 50, 74],
+      [6, 30, 54, 78],
+      [6, 30, 56, 82],
+      [6, 30, 58, 86],
+      [6, 34, 62, 90],
+      [6, 28, 50, 72, 94],
+      [6, 26, 50, 74, 98],
+      [6, 30, 54, 78, 102],
+      [6, 28, 54, 80, 106],
+      [6, 32, 58, 84, 110],
+      [6, 30, 58, 86, 114],
+      [6, 34, 62, 90, 118],
+      [6, 26, 50, 74, 98, 122],
+      [6, 30, 54, 78, 102, 126],
+      [6, 26, 52, 78, 104, 130],
+      [6, 30, 56, 82, 108, 134],
+      [6, 34, 60, 86, 112, 138],
+      [6, 30, 58, 86, 114, 142],
+      [6, 34, 62, 90, 118, 146],
+      [6, 30, 54, 78, 102, 126, 150],
+      [6, 24, 50, 76, 102, 128, 154],
+      [6, 28, 54, 80, 106, 132, 158],
+      [6, 32, 58, 84, 110, 136, 162],
+      [6, 26, 54, 82, 110, 138, 166],
+      [6, 30, 58, 86, 114, 142, 170]
+    ];
+    var G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0);
+    var G18 = (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0);
+    var G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1);
+
+    var _this = {};
+
+    var getBCHDigit = function(data) {
+      var digit = 0;
+      while (data != 0) {
+        digit += 1;
+        data >>>= 1;
+      }
+      return digit;
+    };
+
+    _this.getBCHTypeInfo = function(data) {
+      var d = data << 10;
+      while (getBCHDigit(d) - getBCHDigit(G15) >= 0) {
+        d ^= (G15 << (getBCHDigit(d) - getBCHDigit(G15) ) );
+      }
+      return ( (data << 10) | d) ^ G15_MASK;
+    };
+
+    _this.getBCHTypeNumber = function(data) {
+      var d = data << 12;
+      while (getBCHDigit(d) - getBCHDigit(G18) >= 0) {
+        d ^= (G18 << (getBCHDigit(d) - getBCHDigit(G18) ) );
+      }
+      return (data << 12) | d;
+    };
+
+    _this.getPatternPosition = function(typeNumber) {
+      return PATTERN_POSITION_TABLE[typeNumber - 1];
+    };
+
+    _this.getMaskFunction = function(maskPattern) {
+
+      switch (maskPattern) {
+
+      case QRMaskPattern.PATTERN000 :
+        return function(i, j) { return (i + j) % 2 == 0; };
+      case QRMaskPattern.PATTERN001 :
+        return function(i, j) { return i % 2 == 0; };
+      case QRMaskPattern.PATTERN010 :
+        return function(i, j) { return j % 3 == 0; };
+      case QRMaskPattern.PATTERN011 :
+        return function(i, j) { return (i + j) % 3 == 0; };
+      case QRMaskPattern.PATTERN100 :
+        return function(i, j) { return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 == 0; };
+      case QRMaskPattern.PATTERN101 :
+        return function(i, j) { return (i * j) % 2 + (i * j) % 3 == 0; };
+      case QRMaskPattern.PATTERN110 :
+        return function(i, j) { return ( (i * j) % 2 + (i * j) % 3) % 2 == 0; };
+      case QRMaskPattern.PATTERN111 :
+        return function(i, j) { return ( (i * j) % 3 + (i + j) % 2) % 2 == 0; };
+
+      default :
+        throw 'bad maskPattern:' + maskPattern;
+      }
+    };
+
+    _this.getErrorCorrectPolynomial = function(errorCorrectLength) {
+      var a = qrPolynomial([1], 0);
+      for (var i = 0; i < errorCorrectLength; i += 1) {
+        a = a.multiply(qrPolynomial([1, QRMath.gexp(i)], 0) );
+      }
+      return a;
+    };
+
+    _this.getLengthInBits = function(mode, type) {
+
+      if (1 <= type && type < 10) {
+
+        // 1 - 9
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 10;
+        case QRMode.MODE_ALPHA_NUM : return 9;
+        case QRMode.MODE_8BIT_BYTE : return 8;
+        case QRMode.MODE_KANJI     : return 8;
+        default :
+          throw 'mode:' + mode;
         }
 
-        function updateAgeLabel(timestamp) {
-            const label = document.getElementById('stats-updated-time');
-            const minsAgo = Math.floor((Date.now() - timestamp) / 60000);
-            if (minsAgo < 1) {
-                label.textContent = 'Обновлено только что';
-            } else if (minsAgo < 60) {
-                label.textContent = `Обновлено ${minsAgo} мин. назад`;
-            } else {
-                label.textContent = 'Обновляется раз в час';
-            }
-        }
-    </script>
+      } else if (type < 27) {
 
-    <!-- Modern Toast Notification -->
-    <div id="toast-notification" class="toast-notification">
-        <div id="toast-icon" class="toast-icon">👑</div>
-        <div class="toast-content">
-            <div id="toast-title" class="toast-title">Ссылка скопирована!</div>
-            <div id="toast-desc" class="toast-desc">Откройте Throne и нажмите Ctrl+V на главном экране.</div>
-        </div>
-    </div>
+        // 10 - 26
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 12;
+        case QRMode.MODE_ALPHA_NUM : return 11;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 10;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else if (type < 41) {
+
+        // 27 - 40
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 14;
+        case QRMode.MODE_ALPHA_NUM : return 13;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 12;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else {
+        throw 'type:' + type;
+      }
+    };
+
+    _this.getLostPoint = function(qrcode) {
+
+      var moduleCount = qrcode.getModuleCount();
+
+      var lostPoint = 0;
+
+      // LEVEL1
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount; col += 1) {
+
+          var sameCount = 0;
+          var dark = qrcode.isDark(row, col);
+
+          for (var r = -1; r <= 1; r += 1) {
+
+            if (row + r < 0 || moduleCount <= row + r) {
+              continue;
+            }
+
+            for (var c = -1; c <= 1; c += 1) {
+
+              if (col + c < 0 || moduleCount <= col + c) {
+                continue;
+              }
+
+              if (r == 0 && c == 0) {
+                continue;
+              }
+
+              if (dark == qrcode.isDark(row + r, col + c) ) {
+                sameCount += 1;
+              }
+            }
+          }
+
+          if (sameCount > 5) {
+            lostPoint += (3 + sameCount - 5);
+          }
+        }
+      };
+
+      // LEVEL2
+
+      for (var row = 0; row < moduleCount - 1; row += 1) {
+        for (var col = 0; col < moduleCount - 1; col += 1) {
+          var count = 0;
+          if (qrcode.isDark(row, col) ) count += 1;
+          if (qrcode.isDark(row + 1, col) ) count += 1;
+          if (qrcode.isDark(row, col + 1) ) count += 1;
+          if (qrcode.isDark(row + 1, col + 1) ) count += 1;
+          if (count == 0 || count == 4) {
+            lostPoint += 3;
+          }
+        }
+      }
+
+      // LEVEL3
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount - 6; col += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row, col + 1)
+              &&  qrcode.isDark(row, col + 2)
+              &&  qrcode.isDark(row, col + 3)
+              &&  qrcode.isDark(row, col + 4)
+              && !qrcode.isDark(row, col + 5)
+              &&  qrcode.isDark(row, col + 6) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount - 6; row += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row + 1, col)
+              &&  qrcode.isDark(row + 2, col)
+              &&  qrcode.isDark(row + 3, col)
+              &&  qrcode.isDark(row + 4, col)
+              && !qrcode.isDark(row + 5, col)
+              &&  qrcode.isDark(row + 6, col) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      // LEVEL4
+
+      var darkCount = 0;
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount; row += 1) {
+          if (qrcode.isDark(row, col) ) {
+            darkCount += 1;
+          }
+        }
+      }
+
+      var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+      lostPoint += ratio * 10;
+
+      return lostPoint;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // QRMath
+  //---------------------------------------------------------------------
+
+  var QRMath = function() {
+
+    var EXP_TABLE = new Array(256);
+    var LOG_TABLE = new Array(256);
+
+    // initialize tables
+    for (var i = 0; i < 8; i += 1) {
+      EXP_TABLE[i] = 1 << i;
+    }
+    for (var i = 8; i < 256; i += 1) {
+      EXP_TABLE[i] = EXP_TABLE[i - 4]
+        ^ EXP_TABLE[i - 5]
+        ^ EXP_TABLE[i - 6]
+        ^ EXP_TABLE[i - 8];
+    }
+    for (var i = 0; i < 255; i += 1) {
+      LOG_TABLE[EXP_TABLE[i] ] = i;
+    }
+
+    var _this = {};
+
+    _this.glog = function(n) {
+
+      if (n < 1) {
+        throw 'glog(' + n + ')';
+      }
+
+      return LOG_TABLE[n];
+    };
+
+    _this.gexp = function(n) {
+
+      while (n < 0) {
+        n += 255;
+      }
+
+      while (n >= 256) {
+        n -= 255;
+      }
+
+      return EXP_TABLE[n];
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrPolynomial
+  //---------------------------------------------------------------------
+
+  function qrPolynomial(num, shift) {
+
+    if (typeof num.length == 'undefined') {
+      throw num.length + '/' + shift;
+    }
+
+    var _num = function() {
+      var offset = 0;
+      while (offset < num.length && num[offset] == 0) {
+        offset += 1;
+      }
+      var _num = new Array(num.length - offset + shift);
+      for (var i = 0; i < num.length - offset; i += 1) {
+        _num[i] = num[i + offset];
+      }
+      return _num;
+    }();
+
+    var _this = {};
+
+    _this.getAt = function(index) {
+      return _num[index];
+    };
+
+    _this.getLength = function() {
+      return _num.length;
+    };
+
+    _this.multiply = function(e) {
+
+      var num = new Array(_this.getLength() + e.getLength() - 1);
+
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        for (var j = 0; j < e.getLength(); j += 1) {
+          num[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i) ) + QRMath.glog(e.getAt(j) ) );
+        }
+      }
+
+      return qrPolynomial(num, 0);
+    };
+
+    _this.mod = function(e) {
+
+      if (_this.getLength() - e.getLength() < 0) {
+        return _this;
+      }
+
+      var ratio = QRMath.glog(_this.getAt(0) ) - QRMath.glog(e.getAt(0) );
+
+      var num = new Array(_this.getLength() );
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        num[i] = _this.getAt(i);
+      }
+
+      for (var i = 0; i < e.getLength(); i += 1) {
+        num[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i) ) + ratio);
+      }
+
+      // recursive call
+      return qrPolynomial(num, 0).mod(e);
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // QRRSBlock
+  //---------------------------------------------------------------------
+
+  var QRRSBlock = function() {
+
+    var RS_BLOCK_TABLE = [
+
+      // L
+      // M
+      // Q
+      // H
+
+      // 1
+      [1, 26, 19],
+      [1, 26, 16],
+      [1, 26, 13],
+      [1, 26, 9],
+
+      // 2
+      [1, 44, 34],
+      [1, 44, 28],
+      [1, 44, 22],
+      [1, 44, 16],
+
+      // 3
+      [1, 70, 55],
+      [1, 70, 44],
+      [2, 35, 17],
+      [2, 35, 13],
+
+      // 4
+      [1, 100, 80],
+      [2, 50, 32],
+      [2, 50, 24],
+      [4, 25, 9],
+
+      // 5
+      [1, 134, 108],
+      [2, 67, 43],
+      [2, 33, 15, 2, 34, 16],
+      [2, 33, 11, 2, 34, 12],
+
+      // 6
+      [2, 86, 68],
+      [4, 43, 27],
+      [4, 43, 19],
+      [4, 43, 15],
+
+      // 7
+      [2, 98, 78],
+      [4, 49, 31],
+      [2, 32, 14, 4, 33, 15],
+      [4, 39, 13, 1, 40, 14],
+
+      // 8
+      [2, 121, 97],
+      [2, 60, 38, 2, 61, 39],
+      [4, 40, 18, 2, 41, 19],
+      [4, 40, 14, 2, 41, 15],
+
+      // 9
+      [2, 146, 116],
+      [3, 58, 36, 2, 59, 37],
+      [4, 36, 16, 4, 37, 17],
+      [4, 36, 12, 4, 37, 13],
+
+      // 10
+      [2, 86, 68, 2, 87, 69],
+      [4, 69, 43, 1, 70, 44],
+      [6, 43, 19, 2, 44, 20],
+      [6, 43, 15, 2, 44, 16],
+
+      // 11
+      [4, 101, 81],
+      [1, 80, 50, 4, 81, 51],
+      [4, 50, 22, 4, 51, 23],
+      [3, 36, 12, 8, 37, 13],
+
+      // 12
+      [2, 116, 92, 2, 117, 93],
+      [6, 58, 36, 2, 59, 37],
+      [4, 46, 20, 6, 47, 21],
+      [7, 42, 14, 4, 43, 15],
+
+      // 13
+      [4, 133, 107],
+      [8, 59, 37, 1, 60, 38],
+      [8, 44, 20, 4, 45, 21],
+      [12, 33, 11, 4, 34, 12],
+
+      // 14
+      [3, 145, 115, 1, 146, 116],
+      [4, 64, 40, 5, 65, 41],
+      [11, 36, 16, 5, 37, 17],
+      [11, 36, 12, 5, 37, 13],
+
+      // 15
+      [5, 109, 87, 1, 110, 88],
+      [5, 65, 41, 5, 66, 42],
+      [5, 54, 24, 7, 55, 25],
+      [11, 36, 12, 7, 37, 13],
+
+      // 16
+      [5, 122, 98, 1, 123, 99],
+      [7, 73, 45, 3, 74, 46],
+      [15, 43, 19, 2, 44, 20],
+      [3, 45, 15, 13, 46, 16],
+
+      // 17
+      [1, 135, 107, 5, 136, 108],
+      [10, 74, 46, 1, 75, 47],
+      [1, 50, 22, 15, 51, 23],
+      [2, 42, 14, 17, 43, 15],
+
+      // 18
+      [5, 150, 120, 1, 151, 121],
+      [9, 69, 43, 4, 70, 44],
+      [17, 50, 22, 1, 51, 23],
+      [2, 42, 14, 19, 43, 15],
+
+      // 19
+      [3, 141, 113, 4, 142, 114],
+      [3, 70, 44, 11, 71, 45],
+      [17, 47, 21, 4, 48, 22],
+      [9, 39, 13, 16, 40, 14],
+
+      // 20
+      [3, 135, 107, 5, 136, 108],
+      [3, 67, 41, 13, 68, 42],
+      [15, 54, 24, 5, 55, 25],
+      [15, 43, 15, 10, 44, 16],
+
+      // 21
+      [4, 144, 116, 4, 145, 117],
+      [17, 68, 42],
+      [17, 50, 22, 6, 51, 23],
+      [19, 46, 16, 6, 47, 17],
+
+      // 22
+      [2, 139, 111, 7, 140, 112],
+      [17, 74, 46],
+      [7, 54, 24, 16, 55, 25],
+      [34, 37, 13],
+
+      // 23
+      [4, 151, 121, 5, 152, 122],
+      [4, 75, 47, 14, 76, 48],
+      [11, 54, 24, 14, 55, 25],
+      [16, 45, 15, 14, 46, 16],
+
+      // 24
+      [6, 147, 117, 4, 148, 118],
+      [6, 73, 45, 14, 74, 46],
+      [11, 54, 24, 16, 55, 25],
+      [30, 46, 16, 2, 47, 17],
+
+      // 25
+      [8, 132, 106, 4, 133, 107],
+      [8, 75, 47, 13, 76, 48],
+      [7, 54, 24, 22, 55, 25],
+      [22, 45, 15, 13, 46, 16],
+
+      // 26
+      [10, 142, 114, 2, 143, 115],
+      [19, 74, 46, 4, 75, 47],
+      [28, 50, 22, 6, 51, 23],
+      [33, 46, 16, 4, 47, 17],
+
+      // 27
+      [8, 152, 122, 4, 153, 123],
+      [22, 73, 45, 3, 74, 46],
+      [8, 53, 23, 26, 54, 24],
+      [12, 45, 15, 28, 46, 16],
+
+      // 28
+      [3, 147, 117, 10, 148, 118],
+      [3, 73, 45, 23, 74, 46],
+      [4, 54, 24, 31, 55, 25],
+      [11, 45, 15, 31, 46, 16],
+
+      // 29
+      [7, 146, 116, 7, 147, 117],
+      [21, 73, 45, 7, 74, 46],
+      [1, 53, 23, 37, 54, 24],
+      [19, 45, 15, 26, 46, 16],
+
+      // 30
+      [5, 145, 115, 10, 146, 116],
+      [19, 75, 47, 10, 76, 48],
+      [15, 54, 24, 25, 55, 25],
+      [23, 45, 15, 25, 46, 16],
+
+      // 31
+      [13, 145, 115, 3, 146, 116],
+      [2, 74, 46, 29, 75, 47],
+      [42, 54, 24, 1, 55, 25],
+      [23, 45, 15, 28, 46, 16],
+
+      // 32
+      [17, 145, 115],
+      [10, 74, 46, 23, 75, 47],
+      [10, 54, 24, 35, 55, 25],
+      [19, 45, 15, 35, 46, 16],
+
+      // 33
+      [17, 145, 115, 1, 146, 116],
+      [14, 74, 46, 21, 75, 47],
+      [29, 54, 24, 19, 55, 25],
+      [11, 45, 15, 46, 46, 16],
+
+      // 34
+      [13, 145, 115, 6, 146, 116],
+      [14, 74, 46, 23, 75, 47],
+      [44, 54, 24, 7, 55, 25],
+      [59, 46, 16, 1, 47, 17],
+
+      // 35
+      [12, 151, 121, 7, 152, 122],
+      [12, 75, 47, 26, 76, 48],
+      [39, 54, 24, 14, 55, 25],
+      [22, 45, 15, 41, 46, 16],
+
+      // 36
+      [6, 151, 121, 14, 152, 122],
+      [6, 75, 47, 34, 76, 48],
+      [46, 54, 24, 10, 55, 25],
+      [2, 45, 15, 64, 46, 16],
+
+      // 37
+      [17, 152, 122, 4, 153, 123],
+      [29, 74, 46, 14, 75, 47],
+      [49, 54, 24, 10, 55, 25],
+      [24, 45, 15, 46, 46, 16],
+
+      // 38
+      [4, 152, 122, 18, 153, 123],
+      [13, 74, 46, 32, 75, 47],
+      [48, 54, 24, 14, 55, 25],
+      [42, 45, 15, 32, 46, 16],
+
+      // 39
+      [20, 147, 117, 4, 148, 118],
+      [40, 75, 47, 7, 76, 48],
+      [43, 54, 24, 22, 55, 25],
+      [10, 45, 15, 67, 46, 16],
+
+      // 40
+      [19, 148, 118, 6, 149, 119],
+      [18, 75, 47, 31, 76, 48],
+      [34, 54, 24, 34, 55, 25],
+      [20, 45, 15, 61, 46, 16]
+    ];
+
+    var qrRSBlock = function(totalCount, dataCount) {
+      var _this = {};
+      _this.totalCount = totalCount;
+      _this.dataCount = dataCount;
+      return _this;
+    };
+
+    var _this = {};
+
+    var getRsBlockTable = function(typeNumber, errorCorrectionLevel) {
+
+      switch(errorCorrectionLevel) {
+      case QRErrorCorrectionLevel.L :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+      case QRErrorCorrectionLevel.M :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+      case QRErrorCorrectionLevel.Q :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+      case QRErrorCorrectionLevel.H :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+      default :
+        return undefined;
+      }
+    };
+
+    _this.getRSBlocks = function(typeNumber, errorCorrectionLevel) {
+
+      var rsBlock = getRsBlockTable(typeNumber, errorCorrectionLevel);
+
+      if (typeof rsBlock == 'undefined') {
+        throw 'bad rs block @ typeNumber:' + typeNumber +
+            '/errorCorrectionLevel:' + errorCorrectionLevel;
+      }
+
+      var length = rsBlock.length / 3;
+
+      var list = [];
+
+      for (var i = 0; i < length; i += 1) {
+
+        var count = rsBlock[i * 3 + 0];
+        var totalCount = rsBlock[i * 3 + 1];
+        var dataCount = rsBlock[i * 3 + 2];
+
+        for (var j = 0; j < count; j += 1) {
+          list.push(qrRSBlock(totalCount, dataCount) );
+        }
+      }
+
+      return list;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrBitBuffer
+  //---------------------------------------------------------------------
+
+  var qrBitBuffer = function() {
+
+    var _buffer = [];
+    var _length = 0;
+
+    var _this = {};
+
+    _this.getBuffer = function() {
+      return _buffer;
+    };
+
+    _this.getAt = function(index) {
+      var bufIndex = Math.floor(index / 8);
+      return ( (_buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+    };
+
+    _this.put = function(num, length) {
+      for (var i = 0; i < length; i += 1) {
+        _this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+      }
+    };
+
+    _this.getLengthInBits = function() {
+      return _length;
+    };
+
+    _this.putBit = function(bit) {
+
+      var bufIndex = Math.floor(_length / 8);
+      if (_buffer.length <= bufIndex) {
+        _buffer.push(0);
+      }
+
+      if (bit) {
+        _buffer[bufIndex] |= (0x80 >>> (_length % 8) );
+      }
+
+      _length += 1;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrNumber
+  //---------------------------------------------------------------------
+
+  var qrNumber = function(data) {
+
+    var _mode = QRMode.MODE_NUMBER;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _data;
+
+      var i = 0;
+
+      while (i + 2 < data.length) {
+        buffer.put(strToNum(data.substring(i, i + 3) ), 10);
+        i += 3;
+      }
+
+      if (i < data.length) {
+        if (data.length - i == 1) {
+          buffer.put(strToNum(data.substring(i, i + 1) ), 4);
+        } else if (data.length - i == 2) {
+          buffer.put(strToNum(data.substring(i, i + 2) ), 7);
+        }
+      }
+    };
+
+    var strToNum = function(s) {
+      var num = 0;
+      for (var i = 0; i < s.length; i += 1) {
+        num = num * 10 + chatToNum(s.charAt(i) );
+      }
+      return num;
+    };
+
+    var chatToNum = function(c) {
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      }
+      throw 'illegal char :' + c;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrAlphaNum
+  //---------------------------------------------------------------------
+
+  var qrAlphaNum = function(data) {
+
+    var _mode = QRMode.MODE_ALPHA_NUM;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var s = _data;
+
+      var i = 0;
+
+      while (i + 1 < s.length) {
+        buffer.put(
+          getCode(s.charAt(i) ) * 45 +
+          getCode(s.charAt(i + 1) ), 11);
+        i += 2;
+      }
+
+      if (i < s.length) {
+        buffer.put(getCode(s.charAt(i) ), 6);
+      }
+    };
+
+    var getCode = function(c) {
+
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      } else if ('A' <= c && c <= 'Z') {
+        return c.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+      } else {
+        switch (c) {
+        case ' ' : return 36;
+        case '$' : return 37;
+        case '%' : return 38;
+        case '*' : return 39;
+        case '+' : return 40;
+        case '-' : return 41;
+        case '.' : return 42;
+        case '/' : return 43;
+        case ':' : return 44;
+        default :
+          throw 'illegal char :' + c;
+        }
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qr8BitByte
+  //---------------------------------------------------------------------
+
+  var qr8BitByte = function(data) {
+
+    var _mode = QRMode.MODE_8BIT_BYTE;
+    var _data = data;
+    var _bytes = qrcode.stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _bytes.length;
+    };
+
+    _this.write = function(buffer) {
+      for (var i = 0; i < _bytes.length; i += 1) {
+        buffer.put(_bytes[i], 8);
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrKanji
+  //---------------------------------------------------------------------
+
+  var qrKanji = function(data) {
+
+    var _mode = QRMode.MODE_KANJI;
+    var _data = data;
+
+    var stringToBytes = qrcode.stringToBytesFuncs['SJIS'];
+    if (!stringToBytes) {
+      throw 'sjis not supported.';
+    }
+    !function(c, code) {
+      // self test for sjis support.
+      var test = stringToBytes(c);
+      if (test.length != 2 || ( (test[0] << 8) | test[1]) != code) {
+        throw 'sjis not supported.';
+      }
+    }('\u53cb', 0x9746);
+
+    var _bytes = stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return ~~(_bytes.length / 2);
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _bytes;
+
+      var i = 0;
+
+      while (i + 1 < data.length) {
+
+        var c = ( (0xff & data[i]) << 8) | (0xff & data[i + 1]);
+
+        if (0x8140 <= c && c <= 0x9FFC) {
+          c -= 0x8140;
+        } else if (0xE040 <= c && c <= 0xEBBF) {
+          c -= 0xC140;
+        } else {
+          throw 'illegal char at ' + (i + 1) + '/' + c;
+        }
+
+        c = ( (c >>> 8) & 0xff) * 0xC0 + (c & 0xff);
+
+        buffer.put(c, 13);
+
+        i += 2;
+      }
+
+      if (i < data.length) {
+        throw 'illegal char at ' + (i + 1);
+      }
+    };
+
+    return _this;
+  };
+
+  //=====================================================================
+  // GIF Support etc.
+  //
+
+  //---------------------------------------------------------------------
+  // byteArrayOutputStream
+  //---------------------------------------------------------------------
+
+  var byteArrayOutputStream = function() {
+
+    var _bytes = [];
+
+    var _this = {};
+
+    _this.writeByte = function(b) {
+      _bytes.push(b & 0xff);
+    };
+
+    _this.writeShort = function(i) {
+      _this.writeByte(i);
+      _this.writeByte(i >>> 8);
+    };
+
+    _this.writeBytes = function(b, off, len) {
+      off = off || 0;
+      len = len || b.length;
+      for (var i = 0; i < len; i += 1) {
+        _this.writeByte(b[i + off]);
+      }
+    };
+
+    _this.writeString = function(s) {
+      for (var i = 0; i < s.length; i += 1) {
+        _this.writeByte(s.charCodeAt(i) );
+      }
+    };
+
+    _this.toByteArray = function() {
+      return _bytes;
+    };
+
+    _this.toString = function() {
+      var s = '';
+      s += '[';
+      for (var i = 0; i < _bytes.length; i += 1) {
+        if (i > 0) {
+          s += ',';
+        }
+        s += _bytes[i];
+      }
+      s += ']';
+      return s;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64EncodeOutputStream
+  //---------------------------------------------------------------------
+
+  var base64EncodeOutputStream = function() {
+
+    var _buffer = 0;
+    var _buflen = 0;
+    var _length = 0;
+    var _base64 = '';
+
+    var _this = {};
+
+    var writeEncoded = function(b) {
+      _base64 += String.fromCharCode(encode(b & 0x3f) );
+    };
+
+    var encode = function(n) {
+      if (n < 0) {
+        // error.
+      } else if (n < 26) {
+        return 0x41 + n;
+      } else if (n < 52) {
+        return 0x61 + (n - 26);
+      } else if (n < 62) {
+        return 0x30 + (n - 52);
+      } else if (n == 62) {
+        return 0x2b;
+      } else if (n == 63) {
+        return 0x2f;
+      }
+      throw 'n:' + n;
+    };
+
+    _this.writeByte = function(n) {
+
+      _buffer = (_buffer << 8) | (n & 0xff);
+      _buflen += 8;
+      _length += 1;
+
+      while (_buflen >= 6) {
+        writeEncoded(_buffer >>> (_buflen - 6) );
+        _buflen -= 6;
+      }
+    };
+
+    _this.flush = function() {
+
+      if (_buflen > 0) {
+        writeEncoded(_buffer << (6 - _buflen) );
+        _buffer = 0;
+        _buflen = 0;
+      }
+
+      if (_length % 3 != 0) {
+        // padding
+        var padlen = 3 - _length % 3;
+        for (var i = 0; i < padlen; i += 1) {
+          _base64 += '=';
+        }
+      }
+    };
+
+    _this.toString = function() {
+      return _base64;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64DecodeInputStream
+  //---------------------------------------------------------------------
+
+  var base64DecodeInputStream = function(str) {
+
+    var _str = str;
+    var _pos = 0;
+    var _buffer = 0;
+    var _buflen = 0;
+
+    var _this = {};
+
+    _this.read = function() {
+
+      while (_buflen < 8) {
+
+        if (_pos >= _str.length) {
+          if (_buflen == 0) {
+            return -1;
+          }
+          throw 'unexpected end of file./' + _buflen;
+        }
+
+        var c = _str.charAt(_pos);
+        _pos += 1;
+
+        if (c == '=') {
+          _buflen = 0;
+          return -1;
+        } else if (c.match(/^\s$/) ) {
+          // ignore if whitespace.
+          continue;
+        }
+
+        _buffer = (_buffer << 6) | decode(c.charCodeAt(0) );
+        _buflen += 6;
+      }
+
+      var n = (_buffer >>> (_buflen - 8) ) & 0xff;
+      _buflen -= 8;
+      return n;
+    };
+
+    var decode = function(c) {
+      if (0x41 <= c && c <= 0x5a) {
+        return c - 0x41;
+      } else if (0x61 <= c && c <= 0x7a) {
+        return c - 0x61 + 26;
+      } else if (0x30 <= c && c <= 0x39) {
+        return c - 0x30 + 52;
+      } else if (c == 0x2b) {
+        return 62;
+      } else if (c == 0x2f) {
+        return 63;
+      } else {
+        throw 'c:' + c;
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // gifImage (B/W)
+  //---------------------------------------------------------------------
+
+  var gifImage = function(width, height) {
+
+    var _width = width;
+    var _height = height;
+    var _data = new Array(width * height);
+
+    var _this = {};
+
+    _this.setPixel = function(x, y, pixel) {
+      _data[y * _width + x] = pixel;
+    };
+
+    _this.write = function(out) {
+
+      //---------------------------------
+      // GIF Signature
+
+      out.writeString('GIF87a');
+
+      //---------------------------------
+      // Screen Descriptor
+
+      out.writeShort(_width);
+      out.writeShort(_height);
+
+      out.writeByte(0x80); // 2bit
+      out.writeByte(0);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Global Color Map
+
+      // black
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+
+      // white
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+
+      //---------------------------------
+      // Image Descriptor
+
+      out.writeString(',');
+      out.writeShort(0);
+      out.writeShort(0);
+      out.writeShort(_width);
+      out.writeShort(_height);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Local Color Map
+
+      //---------------------------------
+      // Raster Data
+
+      var lzwMinCodeSize = 2;
+      var raster = getLZWRaster(lzwMinCodeSize);
+
+      out.writeByte(lzwMinCodeSize);
+
+      var offset = 0;
+
+      while (raster.length - offset > 255) {
+        out.writeByte(255);
+        out.writeBytes(raster, offset, 255);
+        offset += 255;
+      }
+
+      out.writeByte(raster.length - offset);
+      out.writeBytes(raster, offset, raster.length - offset);
+      out.writeByte(0x00);
+
+      //---------------------------------
+      // GIF Terminator
+      out.writeString(';');
+    };
+
+    var bitOutputStream = function(out) {
+
+      var _out = out;
+      var _bitLength = 0;
+      var _bitBuffer = 0;
+
+      var _this = {};
+
+      _this.write = function(data, length) {
+
+        if ( (data >>> length) != 0) {
+          throw 'length over';
+        }
+
+        while (_bitLength + length >= 8) {
+          _out.writeByte(0xff & ( (data << _bitLength) | _bitBuffer) );
+          length -= (8 - _bitLength);
+          data >>>= (8 - _bitLength);
+          _bitBuffer = 0;
+          _bitLength = 0;
+        }
+
+        _bitBuffer = (data << _bitLength) | _bitBuffer;
+        _bitLength = _bitLength + length;
+      };
+
+      _this.flush = function() {
+        if (_bitLength > 0) {
+          _out.writeByte(_bitBuffer);
+        }
+      };
+
+      return _this;
+    };
+
+    var getLZWRaster = function(lzwMinCodeSize) {
+
+      var clearCode = 1 << lzwMinCodeSize;
+      var endCode = (1 << lzwMinCodeSize) + 1;
+      var bitLength = lzwMinCodeSize + 1;
+
+      // Setup LZWTable
+      var table = lzwTable();
+
+      for (var i = 0; i < clearCode; i += 1) {
+        table.add(String.fromCharCode(i) );
+      }
+      table.add(String.fromCharCode(clearCode) );
+      table.add(String.fromCharCode(endCode) );
+
+      var byteOut = byteArrayOutputStream();
+      var bitOut = bitOutputStream(byteOut);
+
+      // clear code
+      bitOut.write(clearCode, bitLength);
+
+      var dataIndex = 0;
+
+      var s = String.fromCharCode(_data[dataIndex]);
+      dataIndex += 1;
+
+      while (dataIndex < _data.length) {
+
+        var c = String.fromCharCode(_data[dataIndex]);
+        dataIndex += 1;
+
+        if (table.contains(s + c) ) {
+
+          s = s + c;
+
+        } else {
+
+          bitOut.write(table.indexOf(s), bitLength);
+
+          if (table.size() < 0xfff) {
+
+            if (table.size() == (1 << bitLength) ) {
+              bitLength += 1;
+            }
+
+            table.add(s + c);
+          }
+
+          s = c;
+        }
+      }
+
+      bitOut.write(table.indexOf(s), bitLength);
+
+      // end code
+      bitOut.write(endCode, bitLength);
+
+      bitOut.flush();
+
+      return byteOut.toByteArray();
+    };
+
+    var lzwTable = function() {
+
+      var _map = {};
+      var _size = 0;
+
+      var _this = {};
+
+      _this.add = function(key) {
+        if (_this.contains(key) ) {
+          throw 'dup key:' + key;
+        }
+        _map[key] = _size;
+        _size += 1;
+      };
+
+      _this.size = function() {
+        return _size;
+      };
+
+      _this.indexOf = function(key) {
+        return _map[key];
+      };
+
+      _this.contains = function(key) {
+        return typeof _map[key] != 'undefined';
+      };
+
+      return _this;
+    };
+
+    return _this;
+  };
+
+  var createDataURL = function(width, height, getPixel) {
+    var gif = gifImage(width, height);
+    for (var y = 0; y < height; y += 1) {
+      for (var x = 0; x < width; x += 1) {
+        gif.setPixel(x, y, getPixel(x, y) );
+      }
+    }
+
+    var b = byteArrayOutputStream();
+    gif.write(b);
+
+    var base64 = base64EncodeOutputStream();
+    var bytes = b.toByteArray();
+    for (var i = 0; i < bytes.length; i += 1) {
+      base64.writeByte(bytes[i]);
+    }
+    base64.flush();
+
+    return 'data:image/gif;base64,' + base64;
+  };
+
+  //---------------------------------------------------------------------
+  // returns qrcode function.
+
+  return qrcode;
+}();
+
+// multibyte support
+!function() {
+
+  qrcode.stringToBytesFuncs['UTF-8'] = function(s) {
+    // http://stackoverflow.com/questions/18729405/how-to-convert-utf8-string-to-byte-array
+    function toUTF8Array(str) {
+      var utf8 = [];
+      for (var i=0; i < str.length; i++) {
+        var charcode = str.charCodeAt(i);
+        if (charcode < 0x80) utf8.push(charcode);
+        else if (charcode < 0x800) {
+          utf8.push(0xc0 | (charcode >> 6),
+              0x80 | (charcode & 0x3f));
+        }
+        else if (charcode < 0xd800 || charcode >= 0xe000) {
+          utf8.push(0xe0 | (charcode >> 12),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+        // surrogate pair
+        else {
+          i++;
+          // UTF-16 encodes 0x10000-0x10FFFF by
+          // subtracting 0x10000 and splitting the
+          // 20 bits of 0x0-0xFFFFF into two halves
+          charcode = 0x10000 + (((charcode & 0x3ff)<<10)
+            | (str.charCodeAt(i) & 0x3ff));
+          utf8.push(0xf0 | (charcode >>18),
+              0x80 | ((charcode>>12) & 0x3f),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+      }
+      return utf8;
+    }
+    return toUTF8Array(s);
+  };
+
+}();
+
+(function (factory) {
+  if (typeof define === 'function' && define.amd) {
+      define([], factory);
+  } else if (typeof exports === 'object') {
+      module.exports = factory();
+  }
+}(function () {
+    return qrcode;
+}));
+</script>
+
+<script>
+// Конфигурация: эти строки подменяет app.py значениями из .env (не меняйте их формат)
+window.PROJECT_NAME = window.PROJECT_NAME || "VPN Service";
+window.PANEL_DOMAIN = window.PANEL_DOMAIN || "";
+window.PANEL_PORT = window.PANEL_PORT || "2096";
+window.BOT_USERNAME = window.BOT_USERNAME || "your_vpn_bot";
+window.SUPPORT_BOT_USERNAME = window.SUPPORT_BOT_USERNAME || "your_support_bot";
+// Необязательно: полный адрес подписок панели без имени клиента, например https://example.com:2096/sub
+window.PANEL_SUB_URL = window.PANEL_SUB_URL || "";
+
+(function () {
+  'use strict';
+
+  /* ================= Приложения ================= */
+  // Ссылки на установку и формат импорта. Поменять ссылку — здесь.
+  var APPS = {
+    hiddify: {
+      name: 'Hiddify',
+      platforms: 'Телефон и ПК',
+      tint: 'rgba(27,199,216,.12)', ink: '#1bc7d8',
+      icon: '<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>',
+      stores: {
+        ios: 'https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532',
+        android: 'https://play.google.com/store/apps/details?id=app.hiddify.com',
+        pc: 'https://github.com/hiddify/hiddify-app/releases'
+      },
+      // https://hiddify.com — hiddify://import/<url>
+      deeplink: function (sub) { return 'hiddify://import/' + sub; },
+      hint: 'Не открылось? Скопируйте ссылку и добавьте её в Hiddify вручную.'
+    },
+    incy: {
+      name: 'Incy',
+      platforms: 'Телефон и ПК',
+      tint: 'rgba(24,181,116,.12)', ink: '#18b574',
+      icon: '<path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z"/>',
+      stores: {
+        ios: 'https://apps.apple.com/app/incy/id6756943388',
+        android: 'https://play.google.com/store/apps/details?id=llc.itdev.incy',
+        pc: 'https://incy.cc/'
+      },
+      // https://docs.incy.cc/en/deep-links/ — incy://add/<url>
+      deeplink: function (sub) { return 'incy://add/' + encodeURIComponent(sub); },
+      hint: 'Не открылось? Скопируйте ссылку и добавьте её в Incy вручную.'
+    },
+    throne: {
+      name: 'Throne',
+      platforms: 'Компьютер',
+      tint: 'rgba(99,91,255,.16)', ink: '#8f89ff',
+      icon: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+      stores: { pc: 'https://github.com/throneproj/Throne/releases' },
+      // Throne >= 1.3.0: throne://addsub/<base64("<url>#<имя>")>
+      deeplink: function (sub, name) { return 'throne://addsub/' + b64utf8(sub + '#' + encodeURIComponent(name)); },
+      hint: 'Не открылось? Обновите Throne до 1.3 или новее, либо скопируйте ссылку и вставьте в Throne (Ctrl+V).',
+      desktopOnly: true
+    }
+  };
+  var ORDER_M = ['hiddify', 'incy', 'throne'];
+  var ORDER_D = ['throne', 'hiddify', 'incy'];
+
+  var ICON = {
+    open: '<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>',
+    crown: '<path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z"/><path d="M5 16h14"/>',
+    shield: '<path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z"/>',
+    download: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+    monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+    phone: '<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/>',
+    check: '<path d="M5 12l5 5 9-10"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'
+  };
+  var OPEN_ICON = { hiddify: ICON.open, incy: ICON.shield, throne: ICON.crown };
+
+  function svg(paths, size, stroke, sw) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="' + (stroke || 'currentColor') +
+      '" stroke-width="' + (sw || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
+  }
+  function b64utf8(s) {
+    var bytes = new TextEncoder().encode(s), bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function $(id) { return document.getElementById(id); }
+  function setAll(key, text) {
+    var els = document.querySelectorAll('[data-k="' + key + '"]');
+    for (var i = 0; i < els.length; i++) els[i].textContent = text;
+  }
+  function store(key, val) {
+    try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); } catch (e) { return null; }
+  }
+
+  /* ================= Конфигурация ================= */
+  function clean(v) { return (v && String(v).indexOf('{{') === -1) ? String(v).trim().replace(/^@/, '') : ''; }
+  var projectName = clean(window.PROJECT_NAME) || 'VPN';
+  var rootDomain = clean(window.PANEL_DOMAIN) || location.hostname.replace(/^sub\./i, '');
+  var panelPort = clean(window.PANEL_PORT) || '2096';
+  var botName = clean(window.BOT_USERNAME) || 'your_vpn_bot';
+  var supportName = clean(window.SUPPORT_BOT_USERNAME) || 'your_support_bot';
+
+  document.title = 'Подписка — ' + projectName;
+  $('brand-title').textContent = projectName;
+  $('renew-link').href = 'https://t.me/' + botName;
+  $('renew-sub').textContent = '@' + botName;
+  $('support-link').href = 'https://t.me/' + supportName;
+  $('support-sub').textContent = '@' + supportName;
+  $('error-bot-link').href = 'https://t.me/' + botName;
+  $('error-bot-text').textContent = 'Открыть Telegram-бот';
+
+  var params = new URLSearchParams(location.search);
+  var subPath = params.get('url') || (location.pathname.length > 1 ? location.pathname : '');
+  var username = '';
+  try { username = decodeURIComponent(subPath.replace(/^\/+/, '').split('/')[0] || ''); } catch (e) { username = ''; }
+
+  if (!username) {
+    $('error-msg').hidden = false;
+    return;
+  }
+
+  $('main-content').hidden = false;
+  $('tiles').hidden = false;
+  $('top-actions').hidden = false;
+  $('brand-sub-d').textContent = 'Ваша подписка · ' + username;
+
+  var subBase = (clean(window.PANEL_SUB_URL) || ('https://' + rootDomain + ':' + panelPort + '/sub')).replace(/\/+$/, '');
+  var subUrl = subBase + '/' + username;
+  var pageUrl = location.origin + '/' + encodeURIComponent(username);
+  $('sub-url').textContent = subUrl;
+
+  /* ================= Устройство и выбор приложения ================= */
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isAndroid = /Android/i.test(ua);
+  var isPhone = isIOS || isAndroid;
+  $('device-chip').innerHTML = svg(isPhone ? ICON.phone : ICON.monitor, 13) + (isIOS ? (/iPad/.test(ua) ? 'iPad' : 'iPhone') : isAndroid ? 'Android' : 'Компьютер');
+
+  var saved = store('vpn_app');
+  var current = APPS[saved] ? saved : (isPhone ? 'hiddify' : 'throne');
+
+  function storeButtons(app, short) {
+    var a = APPS[app], html = '';
+    if (a.stores.ios || a.stores.android) {
+      html += '<div class="grid2">';
+      if (a.stores.ios) html += '<a class="btn btn-g btn-sm" target="_blank" rel="noopener" href="' + a.stores.ios + '">' + svg(ICON.download, 15) + (short ? 'iOS' : 'App Store') + '</a>';
+      if (a.stores.android) html += '<a class="btn btn-g btn-sm" target="_blank" rel="noopener" href="' + a.stores.android + '">' + svg(ICON.download, 15) + (short ? 'Android' : 'Google Play') + '</a>';
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function renderAction() {
+    var a = APPS[current], html = '';
+    if (a.desktopOnly && isPhone) {
+      html += '<div class="note">' + svg(ICON.monitor, 18, '#1bc7d8') +
+        '<span>' + a.name + ' работает на компьютере. Откройте эту страницу на ПК или скопируйте ссылку ниже и вставьте в ' + a.name + ' (Ctrl+V).</span></div>' +
+        '<a class="btn btn-g" target="_blank" rel="noopener" href="' + a.stores.pc + '">' + svg(ICON.download, 16) + 'Скачать ' + a.name + ' с GitHub</a>';
+      $('hint').textContent = '';
+    } else {
+      html += '<a class="btn btn-p shine" id="btn-open" href="' + a.deeplink(subUrl, projectName) + '">' + svg(OPEN_ICON[current], 18, null, 2.2) + 'Открыть в ' + a.name + '</a>';
+      if (isPhone || window.matchMedia('(max-width: 899px)').matches) {
+        if (isPhone && (a.stores.ios || a.stores.android)) {
+          html += '<div class="install-cap only-m">Нет ' + a.name + '? Сначала установите:</div><div class="only-m">' + storeButtons(current) + '</div>';
+        } else if (a.stores.pc) {
+          html += '<div class="install-cap only-m">Нет ' + a.name + '? <a target="_blank" rel="noopener" href="' + a.stores.pc + '">Скачать для компьютера</a></div>';
+        }
+      }
+      $('hint').textContent = a.hint;
+    }
+    var box = $('action');
+    box.innerHTML = '<div class="swap action">' + html + '</div>';
+    var open = $('btn-open');
+    if (open) open.addEventListener('click', watchOpen);
+  }
+
+  function renderApps() {
+    var html = '';
+    ORDER_D.forEach(function (id) {
+      var a = APPS[id], on = id === current, links = '';
+      if (a.stores.ios || a.stores.android) links += storeButtons(id, true);
+      if (a.stores.pc) {
+        links += '<a class="btn btn-g btn-sm" target="_blank" rel="noopener" href="' + a.stores.pc + '">' +
+          svg(ICON.monitor, 15) + (id === 'throne' ? 'Скачать с GitHub' : 'Скачать для ПК') + '</a>';
+      }
+      html += '<div class="app' + (on ? ' on' : '') + '">' +
+        '<button type="button" class="app-pick" data-app="' + id + '" aria-pressed="' + on + '">' +
+          '<span class="app-ico" style="background:' + a.tint + ';color:' + a.ink + '">' + svg(a.icon, 20) + '</span>' +
+          '<span class="app-name"><b>' + a.name + '</b><span>' + a.platforms + '</span></span>' +
+          '<span class="radio" aria-hidden="true">' + svg(ICON.check, 12, '#fff', 3.4) + '</span>' +
+        '</button>' +
+        '<div class="app-links">' + links + '</div>' +
+      '</div>';
+    });
+    $('apps').innerHTML = html;
+  }
+
+  function syncSeg() {
+    var btns = document.querySelectorAll('.seg button');
+    for (var i = 0; i < btns.length; i++) {
+      var on = btns[i].getAttribute('data-app') === current;
+      btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) $('seg-ind').style.transform = 'translateX(' + (i * 100) + '%)';
+    }
+    var cards = document.querySelectorAll('.app');
+    for (var j = 0; j < cards.length; j++) {
+      var pick = cards[j].querySelector('.app-pick');
+      var isOn = pick.getAttribute('data-app') === current;
+      cards[j].classList.toggle('on', isOn);
+      pick.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+    }
+  }
+
+  function selectApp(id) {
+    if (!APPS[id] || id === current) return;
+    current = id;
+    store('vpn_app', id);
+    syncSeg();
+    renderAction();
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-app]') : null;
+    if (t) { selectApp(t.getAttribute('data-app')); return; }
+    var r = e.target.closest ? e.target.closest('[data-action="retry"]') : null;
+    if (r) fetchStats(true);
+  });
+
+  renderApps();
+  syncSeg();
+  renderAction();
+  window.matchMedia('(max-width: 899px)').addEventListener('change', renderAction);
+
+  /* ================= «Не открылось?» ================= */
+  var openTimer = null;
+  function watchOpen() {
+    var left = false;
+    function gone() { left = true; }
+    window.addEventListener('blur', gone, { once: true });
+    document.addEventListener('visibilitychange', gone, { once: true });
+    clearTimeout(openTimer);
+    openTimer = setTimeout(function () {
+      window.removeEventListener('blur', gone);
+      document.removeEventListener('visibilitychange', gone);
+      if (!left && document.visibilityState === 'visible') {
+        var a = APPS[current];
+        showToast('Приложение не открылось?', 'Проверьте, что ' + a.name + ' установлен. Или скопируйте ссылку и добавьте её вручную.');
+      }
+    }, 2200);
+  }
+
+  /* ================= Копирование ================= */
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy') ? resolve() : reject(); } catch (e) { reject(e); }
+      document.body.removeChild(ta);
+    });
+  }
+  var copyReset = null;
+  $('copy-btn').addEventListener('click', function () {
+    var btn = this;
+    copyText(subUrl).then(function () {
+      btn.classList.add('done');
+      btn.firstElementChild.innerHTML = ICON.check;
+      $('copy-text').innerHTML = 'Скопировано';
+      clearTimeout(copyReset);
+      copyReset = setTimeout(function () {
+        btn.classList.remove('done');
+        btn.firstElementChild.innerHTML = ICON.copy;
+        $('copy-text').innerHTML = 'Копировать<span class="only-m"> ссылку</span>';
+      }, 2000);
+      if (current === 'throne' && !isPhone) showToast('Ссылка скопирована', 'Откройте Throne и нажмите Ctrl+V на главном экране.');
+    }, function () {
+      showToast('Не удалось скопировать', 'Выделите ссылку вручную и скопируйте её.');
+    });
+  });
+
+  /* ================= Тост ================= */
+  var toastTimer = null;
+  function showToast(title, desc) {
+    $('toast-title').textContent = title;
+    $('toast-desc').textContent = desc;
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $('toast').classList.remove('show'); }, 4000);
+  }
+
+  /* ================= QR-код ================= */
+  (function renderQR() {
+    if (typeof qrcode !== 'function') { $('qr-wrap').hidden = true; return; }
+    try {
+      var qr = qrcode(0, 'M');
+      qr.addData(pageUrl);
+      qr.make();
+      var n = qr.getModuleCount(), d = '';
+      for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (qr.isDark(r, c)) d += 'M' + c + ' ' + r + 'h1v1h-1z';
+      $('qr').innerHTML = '<svg viewBox="0 0 ' + n + ' ' + n + '" shape-rendering="crispEdges" aria-hidden="true"><path d="' + d + '" fill="#0b0d14"/></svg>';
+    } catch (e) { $('qr-wrap').hidden = true; }
+  })();
+
+  /* ================= Форматирование ================= */
+  var MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+  function toSec(v) { v = Number(v) || 0; return v > 1e11 ? Math.floor(v / 1000) : v; }
+  function dayMonth(sec) { var d = new Date(sec * 1000); return d.getDate() + ' ' + MONTHS[d.getMonth()]; }
+  function fullDate(sec) { return dayMonth(sec) + ' ' + new Date(sec * 1000).getFullYear(); }
+  function plural(n, one, few, many) {
+    var m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+    return many;
+  }
+  function gb(bytes) {
+    bytes = Math.max(0, Number(bytes) || 0);
+    var g = bytes / 1073741824;
+    if (g >= 1 || bytes === 0) return g.toFixed(1).replace('.', ',') + ' ГБ';
+    return (bytes / 1048576).toFixed(0) + ' МБ';
+  }
+
+  /* ================= Статус ================= */
+  function renderStatus(d) {
+    var chip = $('status-chip'), num = $('days-num'), word = $('days-word'), exp = $('expiry-text');
+    num.classList.remove('sk'); num.style.color = ''; num.style.minWidth = '';
+    chip.className = 'chip';
+    $('renew-link').classList.remove('hot');
+    var expirySec = toSec(d.expiry);
+
+    if (!d.enable && !d.is_expired) {
+      chip.className = 'chip bad'; $('status-text').textContent = 'Отключена';
+      num.hidden = true; word.textContent = 'Подписка отключена';
+      exp.textContent = 'Напишите в поддержку, если это ошибка';
+      $('renew-link').classList.add('hot');
+      return;
+    }
+    if (d.is_expired) {
+      chip.className = 'chip bad'; $('status-text').textContent = 'Истекла';
+      num.hidden = true; word.textContent = 'Подписка закончилась';
+      exp.textContent = expirySec ? 'Действовала до ' + fullDate(expirySec) : '';
+      $('renew-link').classList.add('hot');
+      return;
+    }
+    $('status-text').textContent = 'Активна';
+    if (d.is_unlimited_expiry) {
+      num.hidden = false; num.textContent = '∞'; word.textContent = 'бессрочно';
+      exp.textContent = 'Без ограничения по сроку';
+      return;
+    }
+    var days = Math.max(0, Number(d.days_left) || 0);
+    if (days <= 5) { chip.className = 'chip warn'; $('status-text').textContent = 'Скоро закончится'; $('renew-link').classList.add('hot'); }
+    if (days === 0) {
+      num.hidden = true; word.textContent = 'Последний день';
+    } else {
+      num.hidden = false; num.textContent = String(days);
+      word.textContent = plural(days, 'день', 'дня', 'дней') + ' ' + plural(days, 'остался', 'осталось', 'осталось');
+    }
+    exp.textContent = expirySec ? 'до ' + fullDate(expirySec) : '';
+  }
+
+  /* ================= Трафик ================= */
+  var anim = null;
+  function ringColor(p) { return p >= 90 ? '#f0556b' : p >= 70 ? '#f0a92e' : '#635bff'; }
+  function setRings(fraction, color) {
+    var rings = document.querySelectorAll('.bar[data-ring]');
+    for (var i = 0; i < rings.length; i++) {
+      var c = 2 * Math.PI * Number(rings[i].getAttribute('data-ring'));
+      rings[i].setAttribute('stroke-dasharray', c.toFixed(2));
+      rings[i].setAttribute('stroke-dashoffset', (c - c * Math.min(1, Math.max(0, fraction))).toFixed(2));
+      rings[i].setAttribute('stroke', color);
+    }
+  }
+
+  function renderTraffic(d, animate) {
+    $('traffic-skeleton').hidden = true;
+    $('traffic-error').hidden = true;
+    $('traffic-ready').hidden = false;
+
+    var unlimited = !!d.is_unlimited_traffic;
+    var used = Number(d.used_bytes) || 0;
+    var volume = Number(d.volume_bytes) || 0;
+    var pct = unlimited ? 0 : Math.min(100, Number(d.used_percent) || 0);
+
+    setAll('total', unlimited ? 'безлимита' : gb(volume));
+    setAll('limit-label', unlimited ? 'без лимита' : 'лимит ' + gb(volume));
+
+    var resetSec = toSec(d.next_reset);
+    if (resetSec > 0) {
+      var inDays = Math.max(0, Math.ceil((resetSec * 1000 - Date.now()) / 86400000));
+      setAll('reset-short', 'сброс ' + dayMonth(resetSec));
+      setAll('third-k', 'Сброс через');
+      setAll('third-v', inDays === 0 ? 'сегодня' : inDays + ' ' + plural(inDays, 'день', 'дня', 'дней'));
+      setAll('reset-long', 'Трафик обнулится ' + dayMonth(resetSec));
+      $('reset-note').hidden = false;
+    } else {
+      setAll('reset-short', '');
+      setAll('third-k', 'Лимит');
+      setAll('third-v', unlimited ? 'без лимита' : gb(volume));
+      $('reset-note').hidden = true;
+    }
+
+    function frame(p) {
+      setAll('used', gb(used * p));
+      if (unlimited) {
+        setAll('pct', '∞');
+        setAll('rem', 'безлимит');
+        setRings(p, '#1bc7d8');
+      } else {
+        setAll('pct', Math.round(pct * p) + '%');
+        setAll('rem', gb(Math.max(0, volume - used * p)));
+        setRings(pct / 100 * p, ringColor(pct));
+      }
+    }
+
+    if (anim) cancelAnimationFrame(anim);
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!animate || reduce) { frame(1); return; }
+    var start = performance.now();
+    (function step(now) {
+      var k = Math.min(1, (now - start) / 1200);
+      frame(1 - Math.pow(1 - k, 3));
+      if (k < 1) anim = requestAnimationFrame(step);
+    })(start);
+  }
+
+  /* ================= Загрузка статистики ================= */
+  var CACHE_TTL_MS = 3600 * 1000;
+  var cacheKey = 'vpn_sub_stats_' + username;
+  var lastTs = 0;
+
+  function updateAgeLabel() {
+    if (!lastTs) return;
+    var mins = Math.floor((Date.now() - lastTs) / 60000);
+    setAll('updated', mins < 1 ? 'Обновлено только что' : mins < 60 ? 'Обновлено ' + mins + ' мин. назад' : 'Обновляется раз в час');
+  }
+
+  function render(data, ts, animate) {
+    lastTs = ts;
+    renderStatus(data);
+    renderTraffic(data, animate);
+    updateAgeLabel();
+  }
+
+  function fetchStats(manual) {
+    var btn = $('btn-refresh');
+    if (manual) btn.classList.add('spinning');
+    var url = '/api/subscription/' + encodeURIComponent(username) + (manual ? '?t=' + Date.now() : '');
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (data) {
+      var ts = Date.now();
+      store(cacheKey, JSON.stringify({ timestamp: ts, data: data }));
+      render(data, ts, true);
+    }).catch(function (err) {
+      console.error('Не удалось загрузить данные о подписке:', err);
+      if (!lastTs) {
+        $('traffic-skeleton').hidden = true;
+        $('traffic-error').hidden = false;
+        $('status-text').textContent = 'Нет данных';
+        $('status-chip').className = 'chip warn';
+        $('expiry-text').textContent = 'Не удалось загрузить статистику';
+      } else {
+        showToast('Не удалось обновить', 'Показываем данные из последней загрузки.');
+      }
+    }).then(function () {
+      setTimeout(function () { btn.classList.remove('spinning'); }, 400);
+    });
+  }
+
+  $('btn-refresh').addEventListener('click', function () { fetchStats(true); });
+
+  var cached = null;
+  try { cached = JSON.parse(store(cacheKey) || 'null'); } catch (e) { cached = null; }
+  if (cached && cached.data && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    render(cached.data, cached.timestamp, true);
+  } else {
+    fetchStats(false);
+  }
+  setInterval(function () { fetchStats(false); }, CACHE_TTL_MS);
+  setInterval(updateAgeLabel, 60000);
+})();
+</script>
 </body>
 </html>
