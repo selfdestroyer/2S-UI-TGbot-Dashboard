@@ -173,7 +173,7 @@ TARIFFS="1:200,3:570:5,6:1080:10,12:2000:15"
 ├── bot.py                   # Telegram-бот (Aiogram 3)
 ├── app.py                   # Веб-сервер / API валидации (FastAPI)
 ├── index.html               # Веб-дашборд подписки (самодостаточный, со встроенным QR)
-├── docs/screenshots/        # Скриншоты дашборда для README
+├── docs/                    # Иконки, скриншоты и техническая документация
 ├── requirements.txt         # Общий список библиотек (aiogram, fastapi, uvicorn, python-dotenv)
 ├── .env.example             # Шаблон конфигурации окружения
 ├── vpn-bot.service          # Шаблон службы systemd для бота (пути подставляет install.sh)
@@ -181,7 +181,6 @@ TARIFFS="1:200,3:570:5,6:1080:10,12:2000:15"
 ├── nginx-sub.conf           # Пример конфигурации Nginx (рабочую генерирует install.sh)
 ├── install.sh               # Установка, настройка, обновление, проверка, удаление
 ├── update.sh                # Обёртка: то же, что install.sh update
-├── PROJECT_INSTRUCTIONS.md  # Детальная внутренняя документация логики
 ├── .gitignore               # Исключение паролей, баз данных и секретов
 └── README.md                # Данное руководство
 ```

@@ -87,8 +87,8 @@
 ├── nginx-sub.conf           # Конфигурация обратного прокси Nginx
 ├── install.sh               # Скрипт автоматической установки на сервер «под ключ»
 ├── update.sh                # Обёртка над install.sh update
-├── PROJECT_INSTRUCTIONS.md  # Данное техническое руководство
 ├── .gitignore               # Исключение .env, *.db, паролей и кэша
+├── docs/                    # Иконки, скриншоты, roadmap.md и это руководство (PROJECT_INSTRUCTIONS.md)
 └── README.md                # Главная документация проекта для GitHub
 ```
 
