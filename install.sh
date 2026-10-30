@@ -27,14 +27,15 @@ BACKUP_CRON="/etc/cron.daily/vpn-bot-backup"
 BACKUP_DIR="/root/2s-ui-tgbot-backups"
 LOG_FILE="/var/log/2s-ui-tgbot-install.log"
 DEFAULT_DB_PATH="/usr/local/s-ui/db/s-ui.db"
-DEFAULT_TARIFFS="1:200,3:570:5,6:1080:10,12:2000:15"
+DEFAULT_TARIFFS="30:200,90:570:5,180:1080:10,365:2000:15"
 REQUIRED_COLUMNS="name desc remark tg_id expiry enable auto_reset next_reset volume up down"
 
 # Ключи .env, которыми управляет установщик (остальные ключи файла не трогаются)
 ENV_KEYS=(BOT_TOKEN ADMIN_TG_ID BOT_USERNAME PROJECT_NAME DB_PATH BOT_DATA_DB
           MAIN_DOMAIN PANEL_PORT SUB_DOMAIN SUPPORT_BOT_USERNAME
           SERVICE_GROUP_NAME SERVICE_GROUP_URL CARD_NUMBER PAYMENT_REQUISITES
-          TARIFFS TIMEZONE PANEL_SUB_URL)
+          TARIFFS TIMEZONE PANEL_SUB_URL
+          PANEL_API_URL PANEL_API_TOKEN PANEL_INBOUND_IDS SUB_TRAFFIC_GB SUB_DEVICE_LIMIT SUB_RESET_DAY_OF_MONTH SUB_GROUP)
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
@@ -87,7 +88,7 @@ show_help() {
   --group-url <url>        Ссылка на инфо-канал
   --card <number>          Номер карты для оплаты
   --requisites <text>      Свой текст реквизитов (HTML, перевод строки — \\n)
-  --tariffs <list>         Тарифы: месяцы:цена[:скидка%],... (по умолчанию ${DEFAULT_TARIFFS})
+  --tariffs <list>         Тарифы: дни:цена[:скидка%],... (по умолчанию ${DEFAULT_TARIFFS})
   --db <path>              Путь к s-ui.db (по умолчанию ищется автоматически)
   --panel-port <port>      Порт подписок панели (по умолчанию из настроек панели)
   --https-port <port>      Порт HTTPS для дашборда, если 443 занят
@@ -403,6 +404,42 @@ read_panel_settings() {
     [[ "$PANEL_SUB_PATH" == /* ]] || PANEL_SUB_PATH="/${PANEL_SUB_PATH}"
     [[ "$PANEL_SUB_PATH" == */ ]] || PANEL_SUB_PATH="${PANEL_SUB_PATH}/"
     if [ -n "$PANEL_SUB_CERT" ]; then PANEL_SCHEME="https"; else PANEL_SCHEME="http"; fi
+
+    # Адрес самой панели — для REST API (apiv2)
+    PANEL_WEB_DOMAIN="$(panel_sql "select value from settings where key='webDomain'")"
+    PANEL_WEB_PORT="$(panel_sql "select value from settings where key='webPort'")"
+    PANEL_WEB_PATH="$(panel_sql "select value from settings where key='webPath'")"
+    PANEL_WEB_CERT="$(panel_sql "select value from settings where key='webCertFile'")"
+    PANEL_WEB_PATH="${PANEL_WEB_PATH:-/app/}"
+    [[ "$PANEL_WEB_PATH" == /* ]] || PANEL_WEB_PATH="/${PANEL_WEB_PATH}"
+    [[ "$PANEL_WEB_PATH" == */ ]] || PANEL_WEB_PATH="${PANEL_WEB_PATH}/"
+    if [ -n "$PANEL_WEB_CERT" ] || [ "$(panel_sql "select value from settings where key='webAcme'")" = "true" ]; then
+        PANEL_WEB_SCHEME="https"
+    else
+        PANEL_WEB_SCHEME="http"
+    fi
+}
+
+default_panel_api_url() {
+    local host="${PANEL_WEB_DOMAIN:-$MAIN_DOMAIN}"
+    [ -n "$host" ] || host="127.0.0.1"
+    echo "${PANEL_WEB_SCHEME}://${host}:${PANEL_WEB_PORT:-2095}${PANEL_WEB_PATH}apiv2/"
+}
+
+check_panel_api() {  # печатает число входящих, код 1 и текст ошибки, если API не отвечает
+    local body
+    body="$(curl -s --max-time 10 -H "Token: ${PANEL_API_TOKEN}" "${PANEL_API_URL%/}/inbounds" 2>/dev/null || true)"
+    [ -n "$body" ] || { echo "нет ответа (403 бывает, если домен не совпадает с webDomain панели)"; return 1; }
+    printf '%s' "$body" | python3 -c '
+import json, sys
+try:
+    b = json.load(sys.stdin)
+except Exception:
+    print("ответ не JSON — проверьте адрес"); sys.exit(1)
+if not b.get("success"):
+    print(b.get("msg") or "панель отклонила запрос"); sys.exit(1)
+print(len((b.get("obj") or {}).get("inbounds") or []))
+'
 }
 
 # ----------------------------- Сеть -------------------------------------------
@@ -457,7 +494,7 @@ install_packages() {
 # ----------------------------- Мастер -----------------------------------------
 
 wizard() {
-    section "1/8 База панели 2S-UI"
+    section "1/9 База панели 2S-UI"
     find_panel_db
     while true; do
         ask DB_PATH "Путь к s-ui.db" "${DB_PATH:-$DEFAULT_DB_PATH}"
@@ -471,7 +508,7 @@ wizard() {
     read_panel_settings
     log_success "Клиентов в панели: $(panel_sql 'select count(*) from clients')"
 
-    section "2/8 Telegram-бот"
+    section "2/9 Telegram-бот"
     if [ "$TOKEN_FROM_ARGS" = true ]; then
         log_warning "Токен передан аргументом и мог сохраниться в истории команд (history -c)."
     fi
@@ -496,7 +533,7 @@ wizard() {
         BOT_TOKEN=""
     done
 
-    section "3/8 Администратор"
+    section "3/9 Администратор"
     while true; do
         ask ADMIN_TG_ID "Ваш цифровой Telegram ID (узнать: @userinfobot)" "$ADMIN_TG_ID"
         ADMIN_TG_ID="$(echo "$ADMIN_TG_ID" | tr -cd '0-9')"
@@ -518,14 +555,14 @@ wizard() {
         confirm "Повторить проверку?" y || break
     done
 
-    section "4/8 Оформление"
+    section "4/9 Оформление"
     ask PROJECT_NAME "Название сервиса" "${PROJECT_NAME:-My VPN Service}"
     ask SUPPORT_BOT_USERNAME "Юзернейм поддержки без @" "${SUPPORT_BOT_USERNAME:-$BOT_USERNAME}"
     SUPPORT_BOT_USERNAME="${SUPPORT_BOT_USERNAME#@}"
     ask SERVICE_GROUP_NAME "Название инфо-канала" "${SERVICE_GROUP_NAME:-Инфо-канал сервиса}"
     ask SERVICE_GROUP_URL "Ссылка на инфо-канал" "${SERVICE_GROUP_URL:-https://t.me/your_channel}"
 
-    section "5/8 Оплата и тарифы"
+    section "5/9 Оплата и тарифы"
     local pay_mode="card"
     if [ -n "$CLI_PAYMENT_MODE" ]; then
         pay_mode="$CLI_PAYMENT_MODE"
@@ -546,7 +583,7 @@ wizard() {
         ask PAYMENT_REQUISITES "Текст реквизитов" "$PAYMENT_REQUISITES"
     fi
     while true; do
-        echo "Тарифы в формате месяцы:цена[:скидка%] через запятую."
+        echo "Тарифы в формате дни:цена[:скидка%] через запятую (30, 90, 180, 365 дней…)."
         ask TARIFFS "Тарифы" "${TARIFFS:-$DEFAULT_TARIFFS}"
         TARIFFS="$(echo "$TARIFFS" | tr -d ' ')"
         [[ "$TARIFFS" =~ ^[0-9]+:[0-9]+(:[0-9]{1,2})?(,[0-9]+:[0-9]+(:[0-9]{1,2})?)*$ ]] && break
@@ -554,7 +591,7 @@ wizard() {
         [ "$NON_INTERACTIVE" = true ] && die "Исправьте --tariffs."
     done
 
-    section "6/8 Домены"
+    section "6/9 Домены"
     ask MAIN_DOMAIN "Домен панели 2S-UI (ссылки https://домен:порт${PANEL_SUB_PATH}имя)" "${MAIN_DOMAIN:-$PANEL_SUB_DOMAIN}"
     ask PANEL_PORT "Порт подписок панели" "${PANEL_PORT:-${PANEL_SUB_PORT:-2096}}"
     compose_panel_sub_url
@@ -588,7 +625,59 @@ wizard() {
     done
     compose_sub_domain
 
-    section "7/8 Часовой пояс"
+    section "7/9 Автовыдача подписок (API панели)"
+    echo "После подтверждения оплаты бот сам создаёт или продлевает подписку через API панели."
+    echo "Токен: панель 2S-UI → Настройки → API-токены. Пусто — подписки выдаются вручную, как раньше."
+    ask PANEL_API_URL "Адрес API панели" "${PANEL_API_URL:-$(default_panel_api_url)}"
+    if [ "$NON_INTERACTIVE" = false ]; then
+        local input_api_token
+        if [ -n "$PANEL_API_TOKEN" ]; then
+            read -r -s -p "API-токен панели [Enter — оставить сохранённый …${PANEL_API_TOKEN: -4}, «-» — убрать]: " input_api_token
+        else
+            read -r -s -p "API-токен панели (ввод скрыт, Enter — пропустить): " input_api_token
+        fi
+        echo
+        input_api_token="$(trim "$input_api_token")"
+        if [ "$input_api_token" = "-" ]; then
+            PANEL_API_TOKEN=""
+        elif [ -n "$input_api_token" ]; then
+            PANEL_API_TOKEN="$input_api_token"
+        fi
+    fi
+    if [ -n "$PANEL_API_TOKEN" ]; then
+        local api_res
+        if api_res="$(check_panel_api)"; then
+            log_success "API панели отвечает, входящих: ${api_res}"
+        else
+            log_warning "API панели не отвечает: ${api_res}"
+            log_warning "Бот будет пытаться выдать подписку и покажет ошибку с кнопкой «Повторить»."
+        fi
+        echo "Входящие панели (id | тег | тип):"
+        panel_sql "select id || ' | ' || tag || ' | ' || type from inbounds order by id" | sed 's/^/  /'
+        local all_inbounds
+        all_inbounds="$(panel_sql "select group_concat(id, ',') from inbounds")"
+        while true; do
+            ask PANEL_INBOUND_IDS "К каким входящим подключать новых клиентов (id через запятую)" "${PANEL_INBOUND_IDS:-$all_inbounds}"
+            PANEL_INBOUND_IDS="$(echo "$PANEL_INBOUND_IDS" | tr -d ' ')"
+            [[ "$PANEL_INBOUND_IDS" =~ ^[0-9]+(,[0-9]+)*$ ]] && break
+            log_warning "Нужен список id через запятую, например 1,2"
+            [ "$NON_INTERACTIVE" = true ] && die "Исправьте PANEL_INBOUND_IDS."
+        done
+    else
+        log_warning "Токен не задан: после подтверждения оплаты создавайте подписку в панели вручную."
+    fi
+    while true; do
+        ask SUB_TRAFFIC_GB "Трафик подписки в месяц, ГБ (0 — без лимита)" "${SUB_TRAFFIC_GB:-250}"
+        ask SUB_DEVICE_LIMIT "Устройств одновременно (0 — без лимита)" "${SUB_DEVICE_LIMIT:-2}"
+        ask SUB_RESET_DAY_OF_MONTH "Число месяца для сброса трафика (1-31, 0 — каждые 30 дней от покупки)" "${SUB_RESET_DAY_OF_MONTH:-0}"
+        [[ "$SUB_TRAFFIC_GB" =~ ^[0-9]+$ && "$SUB_DEVICE_LIMIT" =~ ^[0-9]+$ && "$SUB_RESET_DAY_OF_MONTH" =~ ^[0-9]+$ ]] \
+            && [ "$SUB_RESET_DAY_OF_MONTH" -le 31 ] && break
+        log_warning "Нужны целые числа, число месяца — от 0 до 31."
+        [ "$NON_INTERACTIVE" = true ] && die "Исправьте SUB_TRAFFIC_GB / SUB_DEVICE_LIMIT / SUB_RESET_DAY_OF_MONTH."
+    done
+    ask SUB_GROUP "Группа в панели для купленных подписок" "${SUB_GROUP:-buyer}"
+
+    section "8/9 Часовой пояс"
     local sys_tz
     sys_tz="$(timedatectl show -p Timezone --value 2>/dev/null || true)"
     [ "$sys_tz" = "Etc/UTC" ] || [ "$sys_tz" = "UTC" ] && sys_tz=""
@@ -599,7 +688,7 @@ wizard() {
         [ "$NON_INTERACTIVE" = true ] && die "Исправьте --tz."
     done
 
-    section "8/8 SSL"
+    section "9/9 SSL"
     if cert_exists; then
         log_success "Сертификат для ${SUB_HOST} уже есть, будет использован."
         SETUP_SSL="existing"
@@ -629,6 +718,8 @@ print_plan() {
   Поддержка:          @${SUPPORT_BOT_USERNAME}
   Инфо-канал:         ${SERVICE_GROUP_NAME} (${SERVICE_GROUP_URL})
   Тарифы:             ${TARIFFS}
+  Автовыдача:         $([ -n "$PANEL_API_TOKEN" ] && echo "да, ${PANEL_API_URL}, входящие ${PANEL_INBOUND_IDS}" || echo "нет (вручную)")
+  Лимиты подписки:    ${SUB_TRAFFIC_GB} ГБ/мес, устройств ${SUB_DEVICE_LIMIT}, сброс $([ "${SUB_RESET_DAY_OF_MONTH:-0}" -gt 0 ] 2>/dev/null && echo "${SUB_RESET_DAY_OF_MONTH}-го числа" || echo "каждые 30 дней")
   База панели:        ${DB_PATH}
   Подписки панели:    https://${MAIN_DOMAIN}:${PANEL_PORT}${PANEL_SUB_PATH}<имя>
   Дашборд:            https://${SUB_DOMAIN}/<имя>

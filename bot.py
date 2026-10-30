@@ -13,6 +13,7 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from panel_api import PanelAPI, PanelAPIError, expiry_seconds
 
 # Загружаем переменные окружения из .env
 ENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
@@ -60,9 +61,36 @@ BOT_DATA_DB = os.getenv("BOT_DATA_DB", os.path.join(os.path.dirname(os.path.absp
 
 if not API_TOKEN or not ADMIN_TG_ID:
     raise ValueError("Ошибка: переменные BOT_TOKEN и ADMIN_TG_ID должны быть заданы в файле .env!")
+
+def _env_int(key: str, default: int) -> int:
+    try:
+        return int(os.getenv(key, "").strip() or default)
+    except ValueError:
+        print(f"Ошибка в {key}, используется {default}")
+        return default
+
+# Лимиты каждой подписки: трафик в месяц и одновременные устройства
+SUB_TRAFFIC_GB = _env_int("SUB_TRAFFIC_GB", 250)
+SUB_DEVICE_LIMIT = _env_int("SUB_DEVICE_LIMIT", 2)
+# Число месяца, когда сбрасывается трафик (1-31); 0 — каждые 30 дней от создания подписки
+SUB_RESET_DAY_OF_MONTH = min(max(_env_int("SUB_RESET_DAY_OF_MONTH", 0), 0), 31)
+# Группа в панели для купленных подписок (новым всегда, при продлении — если группы нет)
+SUB_GROUP = os.getenv("SUB_GROUP", "").strip()
+
+# REST API панели: без него бот работает по-старому, подписку админ выдаёт вручную
+PANEL_API_URL = os.getenv("PANEL_API_URL", "").strip()
+PANEL_API_TOKEN = os.getenv("PANEL_API_TOKEN", "").strip()
+PANEL_INBOUND_IDS = [int(x) for x in re.findall(r"\d+", os.getenv("PANEL_INBOUND_IDS", ""))]
+if PANEL_API_URL and PANEL_API_TOKEN and PANEL_INBOUND_IDS:
+    panel_api = PanelAPI(PANEL_API_URL, PANEL_API_TOKEN, PANEL_INBOUND_IDS, SUB_TRAFFIC_GB, SUB_DEVICE_LIMIT,
+                         SUB_RESET_DAY_OF_MONTH, SUB_GROUP)
+else:
+    panel_api = None
+    print("PANEL_API_URL / PANEL_API_TOKEN / PANEL_INBOUND_IDS не заданы: подписки выдаются вручную")
 # -----------------
 
 class BuySubscriptionState(StatesGroup):
+    choosing_target = State()
     waiting_for_receipt = State()
 
 class BroadcastState(StatesGroup):
@@ -70,28 +98,36 @@ class BroadcastState(StatesGroup):
     waiting_for_delete_time = State()
     waiting_for_confirmation = State()
 
-DEFAULT_TARIFFS = "1:200,3:570:5,6:1080:10,12:2000:15"
+DEFAULT_TARIFFS = "30:200,90:570:5,180:1080:10,365:2000:15"
 
-def _months_title(months: int) -> str:
-    if months % 10 == 1 and months % 100 != 11:
-        word = "месяц"
-    elif months % 10 in (2, 3, 4) and months % 100 not in (12, 13, 14):
-        word = "месяца"
+# Старый формат TARIFFS был в месяцах: 1:200,3:570,...
+_LEGACY_MONTH_DAYS = {1: 30, 3: 90, 6: 180, 12: 365}
+
+def _days_title(days: int) -> str:
+    if days % 10 == 1 and days % 100 != 11:
+        word = "день"
+    elif days % 10 in (2, 3, 4) and days % 100 not in (12, 13, 14):
+        word = "дня"
     else:
-        word = "месяцев"
-    return f"{months} {word}"
+        word = "дней"
+    return f"{days} {word}"
 
 def parse_tariffs(raw: str) -> dict:
-    """Разбирает строку тарифов вида 'месяцы:цена[:скидка%],...'."""
+    """Разбирает строку тарифов вида 'дни:цена[:скидка%],...'."""
+    items = [[p.strip() for p in item.split(":")] for item in raw.split(",") if item.strip()]
+    # Все сроки не больше 24 — значит, это старая запись в месяцах
+    legacy_months = bool(items) and all(int(parts[0]) <= 24 for parts in items)
     tariffs = {}
-    for item in raw.split(","):
-        if not item.strip():
-            continue
-        parts = [p.strip() for p in item.split(":")]
-        months, price = int(parts[0]), int(parts[1])
+    for parts in items:
+        days, price = int(parts[0]), int(parts[1])
+        if legacy_months:
+            days = _LEGACY_MONTH_DAYS.get(days, days * 30)
+        if days <= 0:
+            raise ValueError(f"срок тарифа должен быть больше нуля: {parts[0]}")
         discount = int(parts[2]) if len(parts) > 2 and parts[2] else 0
-        title = _months_title(months)
-        tariffs[f"{months}m"] = {
+        title = _days_title(days)
+        tariffs[f"{days}d"] = {
+            "days": days,
             "title": title,
             "price": price,
             "button": f"{title} — {price} ₽" + (f" (-{discount}%)" if discount else ""),
@@ -122,6 +158,18 @@ def get_main_menu_keyboard(user_id: int | None = None) -> InlineKeyboardMarkup:
         buttons.append([InlineKeyboardButton(text="⚙️ Сервисное меню (Админ)", callback_data="admin_panel")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+def devices_text() -> str:
+    """«до 2 устройств» по SUB_DEVICE_LIMIT."""
+    if SUB_DEVICE_LIMIT <= 0:
+        return "без ограничения устройств"
+    n = SUB_DEVICE_LIMIT
+    word = "устройства" if n % 10 == 1 and n % 100 != 11 else "устройств"
+    return f"до {n} {word}"
+
+def traffic_text() -> str:
+    """«250 ГБ в месяц» по SUB_TRAFFIC_GB."""
+    return f"{SUB_TRAFFIC_GB} ГБ в месяц" if SUB_TRAFFIC_GB > 0 else "безлимитный трафик"
+
 def get_main_menu_text(full_name: str) -> str:
     return (
         f"🚀 <b>{PROJECT_NAME}</b>\n"
@@ -129,8 +177,8 @@ def get_main_menu_text(full_name: str) -> str:
         f"👋 Привет, <b>{html.escape(full_name)}</b>!\n\n"
         "Добро пожаловать в сервис быстрого и свободного интернета без цензуры и замедлений.\n\n"
         "⚡ <b>Протоколы:</b> Hysteria2, TUIC, VLESS\n"
-        "📱 <b>До 2 устройств</b> на одну подписку\n"
-        "🚀 <b>250 ГБ трафика в месяц</b> на максимальной скорости\n"
+        f"📱 <b>{devices_text().capitalize()}</b> на одну подписку\n"
+        f"🚀 <b>{traffic_text().capitalize()}</b> на максимальной скорости\n"
         "🛡 <b>Стабильный обход блокировок 24/7</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "<i>Выберите нужное действие ниже:</i>"
@@ -156,30 +204,34 @@ async def cb_main_menu(callback: types.CallbackQuery, state: FSMContext):
     except Exception:
         await callback.message.answer(text, reply_markup=keyboard, parse_mode="HTML")
 
+async def show_screen(callback: types.CallbackQuery, text: str, keyboard: InlineKeyboardMarkup):
+    """Меняет текущее сообщение, а если не вышло — присылает новое."""
+    try:
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+    except Exception:
+        await callback.message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
 @dp.callback_query(F.data == "buy_subscription")
 async def cb_buy_subscription(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer()
-    
+
     buttons = []
     for code, t in TARIFFS.items():
         buttons.append([InlineKeyboardButton(text=t["button"], callback_data=f"buy_tariff:{code}")])
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="main_menu")])
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    
+
     text = (
         "💳 <b>Оформление подписки</b>\n\n"
         "<b>Каждый тариф включает:</b>\n"
-        "📱 Одновременное подключение: <b>до 2 устройств</b>\n"
-        "🚀 Трафик: <b>250 ГБ в месяц</b> без ограничений скорости\n"
+        f"📱 Одновременное подключение: <b>{devices_text()}</b>\n"
+        f"🚀 Трафик: <b>{traffic_text()}</b> без ограничений скорости\n"
         "⚡ Доступные протоколы: <b>Hysteria2, TUIC, VLESS</b>\n"
         "🛡 Обход блокировок и стабильная работа 24/7\n\n"
-        "<i>Выберите подходящий период подписки:</i>"
+        "<i>Выберите срок подписки:</i>"
     )
-    try:
-        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    except Exception:
-        await callback.message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+    await show_screen(callback, text, keyboard)
 
 @dp.callback_query(F.data.startswith("buy_tariff:"))
 async def cb_buy_tariff(callback: types.CallbackQuery, state: FSMContext):
@@ -189,67 +241,147 @@ async def cb_buy_tariff(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer("Тариф не найден", show_alert=True)
         return
 
-    await state.set_state(BuySubscriptionState.waiting_for_receipt)
-    await state.update_data(tariff_code=tariff_code, tariff_title=tariff["title"], tariff_price=tariff["price"])
+    await state.update_data(
+        tariff_code=tariff_code, tariff_title=tariff["title"], tariff_price=tariff["price"],
+        tariff_days=tariff["days"], target_client_id=None, target_client_name=None,
+    )
     await callback.answer()
-    
+
+    # Без API подписку всё равно выдаёт админ, спрашивать «продлить или новую» незачем
+    subs = find_subscriptions_by_tg_id(str(callback.from_user.id)) if panel_api else []
+    if not subs:
+        await show_payment(callback, state)
+        return
+
+    await state.set_state(BuySubscriptionState.choosing_target)
+    await state.update_data(own_subs={str(s["id"]): s["name"] for s in subs})
+    buttons = [
+        [InlineKeyboardButton(text=f"🔄 Продлить {s['name']} (до {s['date_str']})", callback_data=f"buy_target:{s['id']}")]
+        for s in subs
+    ]
+    buttons.append([InlineKeyboardButton(text="➕ Новая подписка", callback_data="buy_target:new")])
+    buttons.append([InlineKeyboardButton(text="◀️ Выбрать другой тариф", callback_data="buy_subscription")])
+    text = (
+        f"💳 <b>{tariff['title']} — {tariff['price']} ₽</b>\n\n"
+        "У вас уже есть подписка. Что оплачиваем?\n\n"
+        "🔄 <b>Продлить</b> — срок добавится к текущему, ссылка останется прежней.\n"
+        "➕ <b>Новая подписка</b> — отдельная ссылка, например для других устройств."
+    )
+    await show_screen(callback, text, InlineKeyboardMarkup(inline_keyboard=buttons))
+
+@dp.callback_query(BuySubscriptionState.choosing_target, F.data.startswith("buy_target:"))
+async def cb_buy_target(callback: types.CallbackQuery, state: FSMContext):
+    target = callback.data.split(":")[1]
+    data = await state.get_data()
+    if target != "new":
+        name = data.get("own_subs", {}).get(target)
+        if not name:
+            await callback.answer("Подписка не найдена, выберите заново", show_alert=True)
+            return
+        await state.update_data(target_client_id=int(target), target_client_name=name)
+    await callback.answer()
+    await show_payment(callback, state)
+
+@dp.callback_query(F.data.startswith("buy_target:"))
+async def cb_buy_target_stale(callback: types.CallbackQuery):
+    await callback.answer("Выбор устарел, начните покупку заново", show_alert=True)
+
+async def show_payment(callback: types.CallbackQuery, state: FSMContext):
+    """Реквизиты и просьба прислать чек по выбранному тарифу."""
+    data = await state.get_data()
+    tariff = TARIFFS[data["tariff_code"]]
+    await state.set_state(BuySubscriptionState.waiting_for_receipt)
+
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="◀️ Выбрать другой тариф", callback_data="buy_subscription")],
             [InlineKeyboardButton(text="❌ Отмена", callback_data="main_menu")],
         ]
     )
-    
+
     discount_line = f" • <i>{tariff['discount']}</i>" if tariff.get("discount") else ""
-    
+    if data.get("target_client_name"):
+        target_line = f"• Оплачиваем: <b>продление {html.escape(data['target_client_name'])}</b>\n"
+    elif panel_api:
+        target_line = "• Оплачиваем: <b>новую подписку</b>\n"
+    else:
+        target_line = ""
+
     text = (
         f"💳 <b>ОПЛАТА ПОДПИСКИ: {tariff['title'].upper()} — {tariff['price']} ₽</b>{discount_line}\n\n"
         "<b>ПАРАМЕТРЫ ТАРИФА:</b>\n"
-        "• Лимит устройств: <b>до 2 устройств</b>\n"
-        "• Трафик: <b>250 ГБ / месяц</b>\n\n"
+        f"{target_line}"
+        f"• Срок: <b>{tariff['title']}</b>\n"
+        f"• Лимит устройств: <b>{devices_text()}</b>\n"
+        f"• Трафик: <b>{traffic_text()}</b>\n\n"
         f"{PAYMENT_REQUISITES}\n\n"
         "⚠️ <b>ИНСТРУКЦИЯ ПО ОПЛАТЕ:</b>\n"
         f"<b>1. ПЕРЕВЕДИТЕ {tariff['price']} ₽ ПО НОМЕРУ КАРТЫ ВЫШЕ</b>\n"
         "<b>2. ПРИШЛИТЕ СКРИНШОТ КВИТАНЦИИ / ЧЕКА ОБ ОПЛАТЕ В ЭТОТ ЧАТ (ФОТО ИЛИ ФАЙЛОМ)</b>\n"
         "<b>3. ПОСЛЕ ОТПРАВКИ ЧЕКА АДМИНИСТРАТОР ПРОВЕРИТ ПЛАТЁЖ И АКТИВИРУЕТ ДОСТУП</b>"
     )
-    try:
-        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    except Exception:
-        await callback.message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+    await show_screen(callback, text, keyboard)
+
+def order_caption(order: dict, status_line: str = "") -> str:
+    """Подпись к чеку у админа, всегда собирается заново из заявки."""
+    username = order.get("username")
+    user_mention = f"@{username}" if username else f"ID: {order['tg_id']}"
+    if order["kind"] == "extend":
+        kind = f"🔄 Продление <code>{html.escape(order['target_client_name'] or '')}</code>"
+    else:
+        kind = "➕ Новая подписка"
+    text = (
+        f"💳 <b>Заявка №{order['id']}</b>\n\n"
+        f"🗓 Тариф: <b>{_days_title(order['days'])} — {order['price']} ₽</b>\n"
+        f"{kind}\n"
+        f"📱 Устройств: <b>{SUB_DEVICE_LIMIT or '∞'}</b> | 🚀 Трафик: <b>{traffic_text()}</b>\n"
+        f"👤 Пользователь: {html.escape(order.get('full_name') or '')} ({html.escape(user_mention)})\n"
+        f"🆔 Telegram ID: <code>{order['tg_id']}</code>"
+    )
+    if status_line:
+        return f"{text}\n\n{status_line}"
+    return f"{text}\n\nПроверьте поступление средств и выберите действие:"
+
+def order_keyboard(order_id: int, retry: bool = False) -> InlineKeyboardMarkup:
+    approve = (InlineKeyboardButton(text="🔁 Повторить", callback_data=f"retry:{order_id}") if retry
+               else InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"approve:{order_id}"))
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        approve,
+        InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject:{order_id}"),
+    ]])
 
 @dp.message(BuySubscriptionState.waiting_for_receipt, F.photo | F.document)
 async def handle_receipt_media(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     username = message.from_user.username
-    user_mention = f"@{username}" if username else f"ID: {user_id}"
     full_name = message.from_user.full_name
-    
+
     data = await state.get_data()
-    tariff_title = data.get("tariff_title", "1 месяц")
-    tariff_price = data.get("tariff_price", 200)
-    tariff_code = data.get("tariff_code", "1m")
-    
+    tariff_code = data.get("tariff_code")
+    tariff = TARIFFS.get(tariff_code)
     await state.clear()
-    
-    admin_keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Одобрить", callback_data=f"approve_sub:{user_id}:{tariff_code}"),
-                InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_sub:{user_id}"),
-            ]
-        ]
-    )
-    
-    caption = (
-        f"💳 <b>Новая заявка на оплату!</b>\n\n"
-        f" Тариф: <b>{tariff_title} — {tariff_price} ₽</b>\n"
-        f"📱 Устройств: <b>2</b> | 🚀 Трафик: <b>250 ГБ/мес</b>\n"
-        f"👤 Пользователь: {html.escape(full_name)} ({user_mention})\n"
-        f"🆔 Telegram ID: <code>{user_id}</code>\n\n"
-        "Проверьте поступление средств и выберите действие:"
-    )
-    
+    if not tariff:
+        await message.answer("⚠️ Тариф больше не действует, выберите его заново через «💳 Купить подписку».")
+        return
+
+    try:
+        order_id = create_order(user_id, username, full_name, tariff_code, tariff["days"], tariff["price"],
+                                data.get("target_client_id"), data.get("target_client_name"))
+        order = get_order(order_id)
+        caption = order_caption(order)
+        admin_keyboard = order_keyboard(order_id)
+    except Exception as e:
+        # Чек не теряем: админ получит его без кнопок и выдаст подписку руками
+        logging.error(f"Не удалось сохранить заявку: {e}")
+        user_mention = f"@{username}" if username else f"ID: {user_id}"
+        caption = (
+            f"💳 <b>Новая заявка на оплату</b> (⚠️ не сохранилась в базе бота, выдайте вручную)\n\n"
+            f"🗓 Тариф: <b>{tariff['title']} — {tariff['price']} ₽</b>\n"
+            f"👤 Пользователь: {html.escape(full_name)} ({html.escape(user_mention)})\n"
+            f"🆔 Telegram ID: <code>{user_id}</code>"
+        )
+        admin_keyboard = None
+
     # Пересылаем чек админу
     try:
         if message.photo:
@@ -260,7 +392,7 @@ async def handle_receipt_media(message: types.Message, state: FSMContext):
             await bot.send_document(ADMIN_TG_ID, document=file_id, caption=caption, reply_markup=admin_keyboard, parse_mode="HTML")
     except Exception as e:
         logging.error(f"Не удалось переслать чек админу: {e}")
-    
+
     user_keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="◀️ В главное меню", callback_data="main_menu")]
@@ -268,7 +400,7 @@ async def handle_receipt_media(message: types.Message, state: FSMContext):
     )
     await message.answer(
         "⏳ <b>Чек принят на проверку!</b>\n\n"
-        f"Вы выбрали тариф: <b>{tariff_title} — {tariff_price} ₽</b>.\n"
+        f"Вы выбрали тариф: <b>{tariff['title']} — {tariff['price']} ₽</b>.\n"
         "Мы передали ваш чек администратору. Обычно проверка занимает от 5 до 15 минут.\n"
         "Как только оплата будет подтверждена, вам придёт уведомление с кнопкой для подключения.",
         reply_markup=user_keyboard,
@@ -289,6 +421,8 @@ async def handle_receipt_invalid(message: types.Message):
         parse_mode="HTML"
     )
 
+# Кнопки approve_sub:/reject_sub: — у чеков, пришедших до появления заявок.
+# Они только уведомляют пользователя, подписку по ним админ выдаёт вручную.
 @dp.callback_query(F.data.startswith("approve_sub:"))
 async def cb_admin_approve_sub(callback: types.CallbackQuery):
     if callback.from_user.id != ADMIN_TG_ID:
@@ -359,6 +493,139 @@ async def cb_admin_reject_sub(callback: types.CallbackQuery):
         )
     except Exception as e:
         logging.error(f"Не удалось отправить уведомление пользователю {target_user_id}: {e}")
+
+async def set_admin_status(message: types.Message, text: str, keyboard: InlineKeyboardMarkup | None = None):
+    """Обновляет подпись к чеку (или текст) в чате админа."""
+    try:
+        if message.caption is not None:
+            await message.edit_caption(caption=text, reply_markup=keyboard, parse_mode="HTML")
+        else:
+            await message.edit_text(text=text, reply_markup=keyboard, parse_mode="HTML")
+    except Exception as e:
+        logging.error(f"Ошибка редактирования сообщения админа: {e}")
+
+def _date_str(expiry: int) -> str:
+    return datetime.fromtimestamp(expiry).strftime("%d.%m.%Y") if expiry > 0 else "бессрочно"
+
+@dp.callback_query(F.data.startswith(("approve:", "retry:")))
+async def cb_admin_approve_order(callback: types.CallbackQuery):
+    if callback.from_user.id != ADMIN_TG_ID:
+        await callback.answer("⛔ У вас нет прав для этого действия!", show_alert=True)
+        return
+
+    order_id = int(callback.data.split(":")[1])
+    order = get_order(order_id)
+    if not order:
+        await callback.answer("Заявка не найдена", show_alert=True)
+        return
+
+    # Без API — как раньше: подтверждаем оплату, подписку админ создаёт в панели сам
+    if not panel_api:
+        if not claim_order(order_id, ("pending", "failed"), "approved"):
+            await callback.answer("Заявка уже обработана", show_alert=True)
+            return
+        await callback.answer("Оплата подтверждена ✅")
+        await set_admin_status(callback.message, order_caption(
+            order, "<b>Статус:</b> ✅ ОДОБРЕНО\n<i>API панели не настроено: создайте подписку в панели вручную.</i>"))
+        await notify_user_manual_approve(order)
+        return
+
+    # Двойное нажатие или повтор с другого устройства не выдаст вторую подписку
+    if not claim_order(order_id, ("pending", "failed"), "processing"):
+        await callback.answer("Заявка уже обработана", show_alert=True)
+        return
+    await callback.answer("Выдаю подписку…")
+    await set_admin_status(callback.message, order_caption(order, "<b>Статус:</b> ⏳ выдаю подписку…"))
+
+    try:
+        if order["kind"] == "extend":
+            client = await panel_api.extend(order["target_client_id"], order["days"], order["tg_id"])
+        else:
+            client = await panel_api.create(order["tg_id"], order["days"])
+    except Exception as e:
+        error = str(e) or e.__class__.__name__
+        if not isinstance(e, PanelAPIError):
+            logging.exception(f"Ошибка выдачи по заявке №{order_id}")
+        finish_order(order_id, "failed", error=error)
+        await set_admin_status(
+            callback.message,
+            order_caption(order, f"<b>Статус:</b> ⚠️ Ошибка выдачи: {html.escape(error)}"),
+            order_keyboard(order_id, retry=True),
+        )
+        return
+
+    name = client["name"]
+    expiry = expiry_seconds(client.get("expiry"))
+    finish_order(order_id, "approved", client_id=client.get("id"), client_name=name, expiry=expiry)
+    await set_admin_status(callback.message, order_caption(
+        order, f"<b>Статус:</b> ✅ ВЫДАНО: <code>{html.escape(name)}</code> до {_date_str(expiry)}"))
+
+    action = "продлена" if order["kind"] == "extend" else "активирована"
+    user_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🚀 Открыть подписку", url=f"https://{SUB_DOMAIN}/{quote(name)}")],
+            [InlineKeyboardButton(text="📦 Ваша подписка", callback_data="my_subscription")],
+            [InlineKeyboardButton(text="◀️ Главное меню", callback_data="main_menu")],
+        ]
+    )
+    try:
+        await bot.send_message(
+            order["tg_id"],
+            "🎉 <b>Ваша оплата подтверждена!</b>\n\n"
+            f"Подписка <b>{html.escape(name)}</b> {action} до <b>{_date_str(expiry)}</b>.\n"
+            "Нажмите <b>«🚀 Открыть подписку»</b>, чтобы подключиться:",
+            reply_markup=user_keyboard,
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        logging.error(f"Не удалось отправить уведомление пользователю {order['tg_id']}: {e}")
+
+async def notify_user_manual_approve(order: dict):
+    user_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📦 Ваша подписка", callback_data="my_subscription")],
+            [InlineKeyboardButton(text="◀️ Главное меню", callback_data="main_menu")],
+        ]
+    )
+    try:
+        await bot.send_message(
+            order["tg_id"],
+            f"🎉 <b>Ваша оплата подтверждена!</b>\n\n"
+            f"Подписка на <b>{_days_title(order['days'])}</b> успешно активирована.\n"
+            "Нажмите кнопку <b>«📦 Ваша подписка»</b> ниже для получения ссылки на подключение:",
+            reply_markup=user_keyboard,
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        logging.error(f"Не удалось отправить уведомление пользователю {order['tg_id']}: {e}")
+
+@dp.callback_query(F.data.startswith("reject:"))
+async def cb_admin_reject_order(callback: types.CallbackQuery):
+    if callback.from_user.id != ADMIN_TG_ID:
+        await callback.answer("⛔ У вас нет прав для этого действия!", show_alert=True)
+        return
+
+    order_id = int(callback.data.split(":")[1])
+    order = get_order(order_id)
+    if not order:
+        await callback.answer("Заявка не найдена", show_alert=True)
+        return
+    if not claim_order(order_id, ("pending", "failed"), "rejected"):
+        await callback.answer("Заявка уже обработана", show_alert=True)
+        return
+    await callback.answer("Заявка отклонена ❌")
+    await set_admin_status(callback.message, order_caption(order, "<b>Статус:</b> ❌ ОТКЛОНЕНО"))
+
+    try:
+        await bot.send_message(
+            order["tg_id"],
+            "❌ <b>Оплата не подтверждена.</b>\n\n"
+            "К сожалению, администратор не подтвердил получение перевода по вашему чеку.\n"
+            "Если у вас есть вопросы или произошла ошибка, свяжитесь с поддержкой.",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        logging.error(f"Не удалось отправить уведомление пользователю {order['tg_id']}: {e}")
 
 @dp.callback_query(F.data == "my_subscription")
 async def cb_my_subscription(callback: types.CallbackQuery):
@@ -469,6 +736,36 @@ def init_bot_data_db():
             )
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_delete_at ON scheduled_deletions(delete_at)")
+        # Заявки на оплату: что купили, кто подтвердил и какая подписка выдана
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tg_id INTEGER NOT NULL,
+                username TEXT,
+                full_name TEXT,
+                tariff_code TEXT NOT NULL,
+                days INTEGER NOT NULL,
+                price INTEGER NOT NULL,
+                kind TEXT NOT NULL,
+                target_client_id INTEGER,
+                target_client_name TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                client_id INTEGER,
+                client_name TEXT,
+                expiry INTEGER,
+                error TEXT,
+                created_at INTEGER NOT NULL,
+                decided_at INTEGER
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_tg_id ON orders(tg_id)")
+        # Заявка, на которой бот перезапустился посреди выдачи: даём админу повторить,
+        # но предупреждаем, что подписка могла успеть создаться
+        cursor.execute("""
+            UPDATE orders SET status = 'failed',
+                error = 'выдача прервана перезапуском бота, проверьте панель перед повтором'
+            WHERE status = 'processing'
+        """)
         conn.commit()
         conn.close()
     except Exception as e:
@@ -487,6 +784,57 @@ def schedule_message_deletion(chat_id: int, message_id: int, delete_at: int):
         conn.close()
     except Exception as e:
         logging.error(f"Ошибка сохранения сообщения на автоудаление: {e}")
+
+def create_order(tg_id: int, username: str | None, full_name: str, tariff_code: str, days: int, price: int,
+                 target_client_id: int | None, target_client_name: str | None) -> int:
+    """Сохраняет заявку на оплату и возвращает её номер."""
+    conn = sqlite3.connect(BOT_DATA_DB)
+    try:
+        cursor = conn.execute("""
+            INSERT INTO orders (tg_id, username, full_name, tariff_code, days, price, kind,
+                                target_client_id, target_client_name, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (tg_id, username, full_name, tariff_code, days, price,
+              "extend" if target_client_id else "new", target_client_id, target_client_name, int(time.time())))
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+def get_order(order_id: int) -> dict | None:
+    conn = sqlite3.connect(BOT_DATA_DB)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+def claim_order(order_id: int, from_statuses: tuple[str, ...], to_status: str) -> bool:
+    """Атомарно переводит заявку в новый статус. False — её уже обработали (двойное нажатие)."""
+    conn = sqlite3.connect(BOT_DATA_DB)
+    try:
+        marks = ",".join("?" * len(from_statuses))
+        cursor = conn.execute(
+            f"UPDATE orders SET status = ?, decided_at = ? WHERE id = ? AND status IN ({marks})",
+            (to_status, int(time.time()), order_id, *from_statuses),
+        )
+        conn.commit()
+        return cursor.rowcount == 1
+    finally:
+        conn.close()
+
+def finish_order(order_id: int, status: str, client_id: int | None = None, client_name: str | None = None,
+                 expiry: int | None = None, error: str | None = None):
+    conn = sqlite3.connect(BOT_DATA_DB)
+    try:
+        conn.execute("""
+            UPDATE orders SET status = ?, client_id = ?, client_name = ?, expiry = ?, error = ?, decided_at = ?
+            WHERE id = ?
+        """, (status, client_id, client_name, expiry, error, int(time.time()), order_id))
+        conn.commit()
+    finally:
+        conn.close()
 
 def get_due_deletions(now_ts: int) -> list:
     """Возвращает сообщения, чей срок жизни истек."""
@@ -726,7 +1074,7 @@ def find_subscriptions_by_tg_id(telegram_id: str):
         
         # LIKE отбирает только кандидатов, точная проверка ниже через extract_tg_id
         query = """
-            SELECT name, expiry, auto_reset, next_reset, desc, remark, tg_id FROM clients 
+            SELECT id, name, expiry, auto_reset, next_reset, desc, remark, tg_id FROM clients 
             WHERE desc LIKE ? OR remark LIKE ? OR tg_id = ?
         """
         tg_num = int(telegram_id) if str(telegram_id).isdigit() else 0
@@ -735,7 +1083,7 @@ def find_subscriptions_by_tg_id(telegram_id: str):
         conn.close()
         
         subs = []
-        for name, expiry, auto_reset, next_reset, desc, remark, tg_id_raw in rows:
+        for client_id, name, expiry, auto_reset, next_reset, desc, remark, tg_id_raw in rows:
             if extract_tg_id(desc, remark, tg_id_raw) != tg_num:
                 continue
             if expiry and expiry > 0:
@@ -750,6 +1098,7 @@ def find_subscriptions_by_tg_id(telegram_id: str):
                 reset_str = datetime.fromtimestamp(r_ts).strftime("%d.%m.%Y")
 
             subs.append({
+                "id": client_id,
                 "name": name,
                 "expiry": expiry,
                 "date_str": date_str,
