@@ -1,6 +1,6 @@
 # REST API панели 2S-UI (apiv2): справка для бота
 
-Разобрано по исходникам [shenaba/2s-ui](https://github.com/shenaba/2s-ui), коммит `1196704` (27.10.2026).
+Разобрано по исходникам [shenaba/2s-ui](https://github.com/shenaba/2s-ui), коммит `1196704` (27.10.2026); поведение записи клиентов совпадает с релизом **1.9.3**, на котором бот проверен в работе.
 Файлы: `api/apiV2Handler.go`, `api/apiService.go`, `service/client.go`, `database/model/model.go`, `web/web.go`.
 
 ## 1. Общее устройство
@@ -57,13 +57,13 @@ https://<webDomain>:2095/app/apiv2/
 | `volume` | int64 | лимит трафика в **байтах**, `0` = безлимит |
 | `up`, `down` | int64 | израсходовано, байты. Отправка `0` = сброс трафика клиента |
 | `expiry` | int64 | окончание, **unix-секунды**, `0` = бессрочно |
-| `desc`, `remark`, `group` | string | свободные поля (сейчас бот хранит Telegram ID в `desc`/`remark`) |
+| `desc`, `remark`, `group` | string | свободные поля. Бот пишет в `desc` `tg://user?id=<ID> \| <ID>`, в `group` — `SUB_GROUP` |
 | `tgId` | int64 | штатное поле панели под Telegram ID, индексированное, `0` = не привязан |
 | `limitIp` | int | лимит одновременных IP, `0` = без лимита |
 | `autoReset`, `resetDays`, `resetDayOfMonth`, `delayStart`, `nextReset` | | периодический сброс трафика |
 | `createdAt`, `onlineAt` | int64 | ставит сервер, из запроса игнорируются |
 
-> `tgId` — то, что сейчас делается костылём через `desc`. Поле есть в модели и в базе (бот его уже читает как `tg_id`), но в форме панели его нет. Через API его можно записать прямо: `{"id": 5, "tgId": 123456789}`.
+> `tgId` — штатное поле панели под Telegram ID владельца. В форме клиента в интерфейсе панели его нет, но через API оно пишется напрямую: `{"id": 5, "tgId": 123456789}`. Бот заполняет его при каждой выдаче и продлении. По `tgId` панель ещё и шлёт клиенту свои уведомления (через своего бота, если он включён).
 
 ## 3. Эндпоинты
 
@@ -160,8 +160,20 @@ data=[42,43,44]    ← для delbulk: массив
 #### `resetpolicy` — расписание сброса трафика
 
 ```json
-{ "ids": [42, 43], "autoReset": true, "resetDays": 30, "resetDayOfMonth": 0 }
+{ "ids": [42, 43], "autoReset": true, "resetDays": 0, "resetDayOfMonth": 1 }
 ```
+
+Либо `resetDays` (каждые N дней), либо `resetDayOfMonth` (число месяца). Клиенты, у которых уже стоит ровно такое расписание и дата сброса в будущем, свою дату сохраняют; остальным `nextReset` считается заново от текущего момента. Дату месячного сброса панель считает в своём часовом поясе (см. ниже).
+
+### Настройки панели (`object=settings`)
+
+`apiv2/save` принимает и `object=settings`, `data` — JSON с изменяемыми ключами (остальные не трогаются):
+
+```
+object=settings  action=set  data={"timeLocation":"Europe/Helsinki"}
+```
+
+При смене `timeLocation` панель пересчитывает `nextReset` всех клиентов с месячным сбросом под новый пояс. Защищённые ключи (учётные данные и т.п.) так не меняются — панель ответит ошибкой.
 
 ### Прочие POST
 
@@ -178,7 +190,7 @@ data=[42,43,44]    ← для delbulk: массив
 
 Ключи `config` — типы протоколов. Достаточно тех, что реально есть среди ваших входящих, но проще повторить набор панели целиком (так клиент заработает и на входящих, добавленных позже). Поле `name`/`username` внутри каждого протокола панель сама перезапишет именем клиента.
 
-Порт генератора на Python:
+Порт генератора на Python (в проекте — `random_configs` в [`panel_api.py`](../panel_api.py)):
 
 ```python
 import base64, secrets, string, uuid
@@ -217,8 +229,9 @@ def random_configs(user: str) -> dict:
 
 ## 5. Как это использует бот
 
-Клиент API живёт в [`panel_api.py`](../panel_api.py): `random_configs()` из §4 и класс `PanelAPI` с методами `get_client`, `create` и `extend`. Сценарий покупки и подтверждения описан в README («Как проходит покупка»).
+Клиент API живёт в [`panel_api.py`](../panel_api.py): `random_configs()` из §4 и класс `PanelAPI` с методами `get_client`, `create` и `extend`. Сценарий покупки и подтверждения — в README («Как проходит покупка») и в [техническом руководстве](PROJECT_INSTRUCTIONS.md#6-покупка-подтверждение-и-выдача-подписки).
 
-- `create(tg_id, days)` — `action=new`: случайное имя из 8 символов (до 3 попыток при совпадении имени), `config` по всем протоколам, `inbounds = PANEL_INBOUND_IDS`, `volume = SUB_TRAFFIC_GB`, `limitIp = SUB_DEVICE_LIMIT`, сброс трафика в число `SUB_RESET_DAY_OF_MONTH` или каждые 30 дней, `tgId` = Telegram ID, `desc` = `tg://user?id=<ID> | <ID>`.
-- `extend(client_id, days, tg_id)` — `action=edit`: `expiry = max(текущий срок, сейчас) + days`, `enable = true`, `tgId`. Бессрочную подписку (`expiry = 0`) не трогает по сроку, только включает.
+- `create(tg_id, days)` — `action=new`: случайное имя из 8 символов (до 3 попыток при совпадении имени), `config` по всем протоколам, `inbounds = PANEL_INBOUND_IDS`, `volume = SUB_TRAFFIC_GB`, `limitIp = SUB_DEVICE_LIMIT`, сброс трафика в число `SUB_RESET_DAY_OF_MONTH` или каждые 30 дней, `tgId` = Telegram ID, `desc` = `tg://user?id=<ID> | <ID>`, `group = SUB_GROUP`.
+- `extend(client_id, days, tg_id)` — `action=edit`: `expiry = max(текущий срок, сейчас) + days`, `enable = true`, `tgId`; `desc` — только пустое, равное ID или ранее сгенерированное ботом; `group` — только если у клиента её нет. Бессрочную подписку (`expiry = 0`) не трогает по сроку, только включает.
+- Побочный эффект любого `edit`: панель пересобирает поле `links` клиента (тот же набор ссылок, порядок может измениться).
 - Чтение (поиск подписок пользователя, уведомления, статистика) остаётся на SQLite в режиме `ro`: это быстро и безопасно. Записи — только через API: прямая запись в `s-ui.db` не обновила бы пользователей в sing-box.
