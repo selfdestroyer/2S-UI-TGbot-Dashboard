@@ -23,12 +23,21 @@ NGINX_CONF="/etc/nginx/sites-available/vpn-sub.conf"
 NGINX_LINK="/etc/nginx/sites-enabled/vpn-sub.conf"
 CERTBOT_DIR="/var/www/certbot"
 RENEW_HOOK="/etc/letsencrypt/renewal-hooks/deploy/vpn-sub-reload-nginx.sh"
+# Сайт nginx только с путём проверок Let's Encrypt для домена панели (см. fix_panel_cert_renewal)
+PANEL_ACME_CONF="/etc/nginx/sites-available/vpn-panel-acme.conf"
+PANEL_ACME_LINK="/etc/nginx/sites-enabled/vpn-panel-acme.conf"
+# С этой версии 2S-UI edit накладывает поля на клиента, а не заменяет его (нужно для автовыдачи)
+MIN_PANEL_VERSION="1.8.3"
+# С этой версии панель сама перечитывает продлённый сертификат
+PANEL_CERT_RELOAD_VERSION="1.5.4"
+PANEL_VERSION=""
 BACKUP_CRON="/etc/cron.daily/vpn-bot-backup"
 BACKUP_DIR="/root/2s-ui-tgbot-backups"
 LOG_FILE="/var/log/2s-ui-tgbot-install.log"
 DEFAULT_DB_PATH="/usr/local/s-ui/db/s-ui.db"
 DEFAULT_TARIFFS="30:200,90:570:5,180:1080:10,365:2000:15"
-REQUIRED_COLUMNS="name desc remark tg_id expiry enable auto_reset next_reset volume up down"
+# Колонки clients, которые читают бот и дашборд (limit_ip — с 2S-UI 1.7.0, tg_id — с 1.8.0)
+REQUIRED_COLUMNS="id name desc remark tg_id expiry enable auto_reset next_reset volume up down total_up total_down limit_ip"
 
 # Ключи .env, которыми управляет установщик (остальные ключи файла не трогаются)
 ENV_KEYS=(BOT_TOKEN ADMIN_TG_ID BOT_USERNAME PROJECT_NAME DB_PATH BOT_DATA_DB
@@ -446,6 +455,235 @@ print(len((b.get("obj") or {}).get("inbounds") or []))
 '
 }
 
+panel_app_version() {  # версия панели: из API (если есть токен), иначе из программы панели
+    local v=""
+    if [ -n "${PANEL_API_TOKEN:-}" ] && [ -n "${PANEL_API_URL:-}" ]; then
+        v="$(curl -s --max-time 10 -H "Token: ${PANEL_API_TOKEN}" "${PANEL_API_URL%/}/status?r=sys" 2>/dev/null \
+            | python3 -c 'import json, sys
+try:
+    print(json.load(sys.stdin)["obj"]["sys"]["appVersion"])
+except Exception:
+    pass' 2>/dev/null || true)"
+    fi
+    if [ -z "$v" ]; then
+        local bin
+        bin="$(dirname "$(dirname "$DB_PATH")")/sui"
+        [ -x "$bin" ] && v="$("$bin" -v 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)"
+    fi
+    printf '%s' "$v" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1 || true
+}
+
+version_at_least() {  # version_at_least 1.9.3 1.8.3 — первая не меньше второй
+    [ -n "$1" ] && [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
+}
+
+check_panel_version() {  # предупреждает, если автовыдача на этой версии панели опасна
+    PANEL_VERSION="$(panel_app_version)"
+    if [ -z "$PANEL_VERSION" ]; then
+        log_warning "Не удалось узнать версию панели — бот проверит её сам при запуске."
+    elif version_at_least "$PANEL_VERSION" "$MIN_PANEL_VERSION"; then
+        log_success "Панель 2S-UI ${PANEL_VERSION}: автовыдача поддерживается."
+    else
+        log_warning "Панель ${PANEL_VERSION}: для автовыдачи нужна 2S-UI ${MIN_PANEL_VERSION} или новее."
+        log_warning "В старых версиях продление через API стёрло бы клиенту ключи и входящие, поэтому бот"
+        log_warning "при запуске сам переключится в ручной режим. Обновите панель и запустите install.sh reconfigure."
+    fi
+}
+
+# ----------------------------- Сертификат панели --------------------------------
+#
+# Панель 2S-UI часто получает сертификат через certbot в режиме standalone: certbot сам
+# поднимает сервер на 80-м порту. Наш nginx этот порт занимает, и такое продление молча
+# перестаёт работать — через 90 дней панель и ссылки подписок перестают открываться.
+# Поэтому для домена панели nginx отдаёт путь проверок Let's Encrypt, а продление
+# переводится на webroot.
+
+panel_cert_names() {  # имена сертификатов certbot, которые указаны в настройках панели
+    local key path
+    for key in webCertFile subCertFile; do
+        path="$(panel_sql "select value from settings where key='${key}'")"
+        if [[ "$path" =~ ^/etc/letsencrypt/live/([^/]+)/ ]]; then echo "${BASH_REMATCH[1]}"; fi
+    done | sort -u
+}
+
+renewal_authenticator() { sed -n 's/^authenticator *= *//p' "/etc/letsencrypt/renewal/$1.conf" 2>/dev/null | head -n1; }
+
+cert_domains() {  # домены сертификата certbot
+    local d
+    d="$(certbot certificates --cert-name "$1" 2>/dev/null | sed -n 's/^ *Domains: //p' | head -n1)"
+    echo "${d:-$1}"
+}
+
+cert_days_left() {  # дней до окончания сертификата certbot, пусто если файла нет
+    local end
+    end="$(openssl x509 -enddate -noout -in "/etc/letsencrypt/live/$1/fullchain.pem" 2>/dev/null | cut -d= -f2)" || return 0
+    [ -n "$end" ] && echo $(( ( $(date -d "$end" +%s) - $(date +%s) ) / 86400 ))
+}
+
+acme_served() {  # отдаёт ли nginx файлы проверки Let's Encrypt для домена
+    local token="vpn-acme-check-$$-$RANDOM" dir="${CERTBOT_DIR:?}/.well-known/acme-challenge" ok=1
+    mkdir -p "$dir"
+    echo "$token" > "${dir}/${token}"
+    chmod 644 "${dir}/${token}"
+    [ "$(curl -s --max-time 5 --resolve "$1:80:127.0.0.1" "http://$1/.well-known/acme-challenge/${token}" 2>/dev/null)" = "$token" ] && ok=0
+    rm -f "${dir:?}/${token:?}"
+    return "$ok"
+}
+
+nginx_foreign_server_name() {  # есть ли домен в чужом сайте nginx (не в нашем vpn-panel-acme)
+    local re
+    re="$(printf '%s' "$1" | sed 's/\./\\./g')"
+    nginx -T 2>/dev/null | awk -v own="$PANEL_ACME_CONF" '
+        /^# configuration file / { skip = (index($0, own) > 0) }
+        !skip' | grep -qE "^[[:space:]]*server_name([[:space:]][^;]*)?[[:space:]]${re}([[:space:];]|$)"
+}
+
+write_panel_acme_conf() {  # write_panel_acme_conf домен... — с откатом, если nginx -t не прошёл
+    local backup=""
+    if [ -f "$PANEL_ACME_CONF" ]; then
+        backup="$(mktemp)"
+        cp -a "$PANEL_ACME_CONF" "$backup"
+    fi
+    cat > "$PANEL_ACME_CONF" <<EOF
+# Управляется install.sh (2S-UI-TGbot-Dashboard): проверки Let's Encrypt для домена панели,
+# чтобы её сертификат продлевался при занятом nginx 80-м порту. Остальное — на HTTPS.
+server {
+    listen 80;
+    server_name $*;
+
+    location /.well-known/acme-challenge/ {
+        root ${CERTBOT_DIR};
+    }
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+EOF
+    ln -sf "$PANEL_ACME_CONF" "$PANEL_ACME_LINK"
+    if nginx -t >/dev/null 2>&1; then
+        systemctl reload nginx
+        [ -n "$backup" ] && rm -f "${backup:?}"
+        return 0
+    fi
+    if [ -n "$backup" ]; then
+        cp -a "$backup" "$PANEL_ACME_CONF"
+        rm -f "${backup:?}"
+    else
+        rm -f "${PANEL_ACME_CONF:?}" "${PANEL_ACME_LINK:?}"
+    fi
+    return 1
+}
+
+switch_renewal_to_webroot() {  # переводит продление сертификата на webroot, проверяя пробным продлением
+    local name="$1" conf="/etc/letsencrypt/renewal/$1.conf" backup
+    if certbot reconfigure --help >/dev/null 2>&1; then
+        # certbot 2.3+: сам делает пробное продление и меняет настройки только при успехе
+        certbot reconfigure --cert-name "$name" --webroot --webroot-path "$CERTBOT_DIR" >/dev/null 2>&1
+        return
+    fi
+    # Старый certbot (Ubuntu 22.04): правим настройки продления сами, проверяем, при неудаче возвращаем
+    backup="$(mktemp)"
+    cp -a "$conf" "$backup"
+    # shellcheck disable=SC2046
+    python3 - "$conf" "$CERTBOT_DIR" $(cert_domains "$name") <<'EOF'
+import re, sys
+conf, webroot, domains = sys.argv[1], sys.argv[2], sys.argv[3:]
+text = open(conf, encoding="utf-8").read()
+text = re.sub(r"(?m)^webroot_path = .*\n", "", text)
+text = re.sub(r"(?ms)^\[\[webroot_map\]\]\n.*?(?=^\[|\Z)", "", text)
+text = re.sub(r"(?m)^authenticator = .*$", f"authenticator = webroot\nwebroot_path = {webroot},", text, count=1)
+text = text.rstrip("\n") + "\n[[webroot_map]]\n" + "".join(f"{d} = {webroot}\n" for d in domains)
+open(conf, "w", encoding="utf-8").write(text)
+EOF
+    if certbot renew --cert-name "$name" --dry-run >/dev/null 2>&1; then
+        rm -f "${backup:?}"
+        return 0
+    fi
+    cp -a "$backup" "$conf"
+    rm -f "${backup:?}"
+    return 1
+}
+
+fix_panel_cert_renewal() {
+    command -v certbot >/dev/null 2>&1 || return 0
+    mkdir -p "$CERTBOT_DIR"
+    local name domains d existing="" need=() fixable=() blocked all served left
+    [ -f "$PANEL_ACME_CONF" ] && existing="$(sed -n 's/^ *server_name \(.*\);/\1/p' "$PANEL_ACME_CONF" | head -n1)"
+
+    for name in $(panel_cert_names); do
+        [ -f "/etc/letsencrypt/renewal/${name}.conf" ] || continue
+        [ "$(renewal_authenticator "$name")" = "standalone" ] || continue
+        log_warning "Сертификат панели ${name} продлевается в режиме standalone, а порт 80 занят nginx — продление не сработает."
+        domains="$(cert_domains "$name")"
+        blocked=false
+        for d in $domains; do
+            acme_served "$d" && continue
+            if nginx_foreign_server_name "$d"; then
+                log_warning "Для ${d} в nginx уже есть свой сайт. Добавьте в его блок «listen 80»:"
+                log_warning "  location /.well-known/acme-challenge/ { root ${CERTBOT_DIR}; }"
+                log_warning "и запустите: sudo bash ${INSTALL_DIR}/install.sh reconfigure"
+                blocked=true
+            else
+                need+=("$d")
+            fi
+        done
+        [ "$blocked" = false ] && fixable+=("$name")
+    done
+    [ ${#fixable[@]} -gt 0 ] || return 0
+
+    if [ ${#need[@]} -gt 0 ]; then
+        # shellcheck disable=SC2086
+        all="$(printf '%s\n' $existing "${need[@]}" | awk 'NF && !seen[$0]++' | xargs)"
+        # shellcheck disable=SC2086
+        if ! write_panel_acme_conf $all; then
+            log_warning "Не удалось добавить сайт nginx для проверок Let's Encrypt (ошибка nginx -t)."
+            return 0
+        fi
+        log_info "nginx: путь проверок Let's Encrypt для ${need[*]}."
+    fi
+
+    for name in "${fixable[@]}"; do
+        served=true
+        for d in $(cert_domains "$name"); do acme_served "$d" || served=false; done
+        if [ "$served" = false ]; then
+            log_warning "Проверки Let's Encrypt для ${name} всё ещё недоступны — продление не переведено."
+            continue
+        fi
+        if ! switch_renewal_to_webroot "$name"; then
+            log_warning "Не удалось перевести продление ${name} на webroot (пробное продление не прошло)."
+            continue
+        fi
+        log_success "Продление сертификата панели ${name} переведено на webroot."
+        left="$(cert_days_left "$name")"
+        if [ -n "$left" ] && [ "$left" -lt 30 ]; then
+            log_info "Сертификату ${name} осталось ${left} дн. — продлеваем сейчас..."
+            if certbot renew --cert-name "$name" --no-random-sleep-on-renew >/dev/null 2>&1; then
+                log_success "Сертификат ${name} продлён до $(openssl x509 -enddate -noout -in "/etc/letsencrypt/live/${name}/fullchain.pem" | cut -d= -f2)."
+            else
+                log_warning "Продлить ${name} не удалось: sudo certbot renew --cert-name ${name}"
+            fi
+        fi
+    done
+    if [ -n "${PANEL_VERSION:-}" ] && ! version_at_least "$PANEL_VERSION" "$PANEL_CERT_RELOAD_VERSION"; then
+        log_warning "Панель ${PANEL_VERSION} не перечитывает сертификат сама: после продления перезапустите её (s-ui restart)."
+    fi
+}
+
+port_free() { [ -z "$(port_owner "$1")" ]; }
+
+panel_version_ok() { version_at_least "${PANEL_VERSION:-$(panel_app_version)}" "$MIN_PANEL_VERSION"; }
+
+panel_cert_ok() {  # для проверки: сертификаты панели продлеваются и не истекают
+    local name left ok=0
+    for name in $(panel_cert_names); do
+        [ -f "/etc/letsencrypt/renewal/${name}.conf" ] || continue
+        left="$(cert_days_left "$name")"
+        if [ "$(renewal_authenticator "$name")" = "standalone" ] && ! port_free 80; then ok=1; fi
+        if [ -n "$left" ] && [ "$left" -lt 14 ]; then ok=1; fi
+    done
+    return "$ok"
+}
+
 # ----------------------------- Сеть -------------------------------------------
 
 valid_host() { [[ "$1" =~ ^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$ ]]; }
@@ -657,6 +895,7 @@ wizard() {
             log_warning "API панели не отвечает: ${api_res}"
             log_warning "Бот будет пытаться выдать подписку и покажет ошибку с кнопкой «Повторить»."
         fi
+        check_panel_version
         echo "Входящие панели (id | тег | тип):"
         panel_sql "select id || ' | ' || tag || ' | ' || type from inbounds order by id" | sed 's/^/  /'
         local all_inbounds
@@ -723,6 +962,7 @@ print_plan() {
   Поддержка:          @${SUPPORT_BOT_USERNAME}
   Инфо-канал:         ${SERVICE_GROUP_NAME} (${SERVICE_GROUP_URL})
   Тарифы:             ${TARIFFS}
+  Панель 2S-UI:       ${PANEL_VERSION:-версия не определена}
   Автовыдача:         $([ -n "$PANEL_API_TOKEN" ] && echo "да, ${PANEL_API_URL}, входящие ${PANEL_INBOUND_IDS}" || echo "нет (вручную)")
   Лимиты подписки:    ${SUB_TRAFFIC_GB} ГБ/мес, устройств ${SUB_DEVICE_LIMIT}, сброс $([ "${SUB_RESET_DAY_OF_MONTH:-0}" -gt 0 ] 2>/dev/null && echo "${SUB_RESET_DAY_OF_MONTH}-го числа" || echo "каждые 30 дней")
   База панели:        ${DB_PATH}
@@ -757,8 +997,11 @@ sync_code() {
     local src="$1"
     mkdir -p "$INSTALL_DIR"
     if [ "$(cd "$src" && pwd)" != "$(cd "$INSTALL_DIR" && pwd)" ]; then
-        rsync -a --exclude 'venv' --exclude '__pycache__' --exclude '.env' --exclude '*.db' \
-            --exclude '.git' --exclude 'index.html.original_backup' "${src}/" "${INSTALL_DIR}/"
+        # --delete убирает файлы, удалённые из репозитория. Исключённое не удаляется:
+        # настройки, базы бота (и их служебные файлы), venv, резервные копии страницы.
+        rsync -a --delete --exclude 'venv' --exclude '__pycache__' --exclude '.env' --exclude '*.db' \
+            --exclude '*.db-*' --exclude '.git' --exclude 'index.html.original_backup*' \
+            "${src}/" "${INSTALL_DIR}/"
     fi
     if [ ! -f "$BOT_DATA_DB" ] && [ -f /root/bot_data.db.bak ]; then
         log_info "Восстановление bot_data.db из /root/bot_data.db.bak..."
@@ -981,11 +1224,22 @@ health_check() {  # health_check "journalctl --since"
     hc "бот читает базу панели" bot_db_ok
     hc "дашборд отдаёт данные из базы" dashboard_api_ok
     hc "сайт ${SUB_HOST} отвечает через nginx" site_ok
+    if [ -n "${PANEL_API_TOKEN:-}" ]; then
+        hc "API панели принимает токен" check_panel_api
+        hc "версия панели подходит для автовыдачи (${MIN_PANEL_VERSION}+)" panel_version_ok
+    fi
+    if [ -n "$(panel_cert_names)" ]; then
+        hc "сертификат панели продлевается и действует ещё 14+ дней" panel_cert_ok
+    fi
     if cert_exists; then
         local end
         end="$(openssl x509 -enddate -noout -in "/etc/letsencrypt/live/${SUB_HOST}/fullchain.pem" 2>/dev/null | cut -d= -f2)"
-        echo "  [ℹ️] сертификат действует до: ${end}"
+        echo "  [ℹ️] сертификат дашборда действует до: ${end}"
     fi
+    local pname
+    for pname in $(panel_cert_names); do
+        echo "  [ℹ️] сертификат панели ${pname}: ещё $(cert_days_left "$pname") дн., продление: $(renewal_authenticator "$pname")"
+    done
     if [ "$HC_FAILED" -ne 0 ]; then
         echo -e "\n${YELLOW}Последние строки журнала бота:${NC}"
         journalctl -u vpn-bot --since "$HC_SINCE" -n 20 --no-pager -o cat 2>/dev/null || true
@@ -1036,6 +1290,7 @@ do_install() {
     env_write
     install_units
     setup_nginx_ssl
+    fix_panel_cert_renewal
     setup_extras
     if restart_and_check; then
         send_report "установка завершена"
@@ -1074,6 +1329,8 @@ do_update() {
     env_write
     install_units
     apply_nginx "$(cert_exists && echo ssl || echo http)"
+    PANEL_VERSION="$(panel_app_version)"
+    fix_panel_cert_renewal
     if restart_and_check; then
         ls -1t "${BACKUP_DIR}"/update-*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm -f
         send_report "обновление установлено"
@@ -1099,10 +1356,23 @@ do_status() {
     load_values
     find_panel_db
     read_panel_settings
-    local since
+    local since since_ts
     since="$(systemctl show -p ActiveEnterTimestamp --value vpn-bot 2>/dev/null)"
-    [ -n "$since" ] || since="-1h"
+    # journalctl не понимает «Sat 2026-10-31 11:10:09 EET» — переводим в секунды
+    if [ -n "$since" ] && since_ts="$(date -d "$since" +%s 2>/dev/null)"; then
+        since="@${since_ts}"
+    else
+        since="-1h"
+    fi
     validate_token && echo "  Бот: @${BOT_USERNAME}" || echo "  Бот: токен не принят Telegram"
+    PANEL_VERSION="$(panel_app_version)"
+    if [ -z "$PANEL_API_TOKEN" ]; then
+        echo "  Панель 2S-UI: ${PANEL_VERSION:-?}, автовыдача выключена (нет токена)"
+    elif version_at_least "$PANEL_VERSION" "$MIN_PANEL_VERSION"; then
+        echo "  Панель 2S-UI: ${PANEL_VERSION}, автовыдача включена"
+    else
+        echo "  Панель 2S-UI: ${PANEL_VERSION:-?}, автовыдача не работает: нужна ${MIN_PANEL_VERSION}+"
+    fi
     echo "  Дашборд: https://${SUB_DOMAIN}/"
     local errors
     errors="$(journalctl -u vpn-bot -u vpn-dashboard --since -24h -o cat 2>/dev/null | grep -cE '^ERROR|Traceback' || true)"
@@ -1114,7 +1384,8 @@ do_uninstall() {
     print_banner
     echo "Будут удалены службы vpn-bot и vpn-dashboard, сайт nginx ${NGINX_CONF},"
     echo "ежедневный бэкап, пользователь ${SERVICE_USER} и папка ${INSTALL_DIR}."
-    echo "Сохранятся: бэкап .env и bot_data.db в ${BACKUP_DIR}, сертификаты, панель 2S-UI, ${CLONE_DIR}."
+    echo "Сохранятся: бэкап .env и bot_data.db в ${BACKUP_DIR}, сертификаты, панель 2S-UI, ${CLONE_DIR}"
+    echo "и сайт nginx для продления сертификата панели (${PANEL_ACME_CONF}), если он был создан."
     confirm "Удалить?" "$([ "$NON_INTERACTIVE" = true ] && echo y || echo n)" || exit 0
 
     mkdir -p "$BACKUP_DIR" && chmod 700 "$BACKUP_DIR"
@@ -1145,6 +1416,29 @@ print_banner() {
     echo -e "${NC}"
 }
 
+summary_mode() {  # что делает бот после подтверждения оплаты и как покупатель подключается
+    if [ -n "${PANEL_API_TOKEN:-}" ] && version_at_least "${PANEL_VERSION:-}" "$MIN_PANEL_VERSION"; then
+        echo "  Режим: автовыдача. После «✅ Подтвердить» бот сам создаёт или продлевает подписку"
+        echo "  в панели и записывает покупателю Telegram ID — в панель заходить не нужно."
+    elif [ -n "${PANEL_API_TOKEN:-}" ] && [ -z "${PANEL_VERSION:-}" ]; then
+        echo "  Режим: автовыдача (версию панели проверить не удалось — бот проверит её при запуске)."
+    else
+        if [ -n "${PANEL_API_TOKEN:-}" ]; then
+            echo "  Режим: вручную — панель ${PANEL_VERSION} старше ${MIN_PANEL_VERSION}, автовыдача на ней небезопасна."
+        else
+            echo "  Режим: вручную — API-токен панели не задан."
+        fi
+        echo "  После «✅ Подтвердить» создайте подписку в панели 2S-UI и впишите Telegram ID"
+        echo "  покупателя в поле «Описание» или «Telegram ID»."
+    fi
+    if cert_exists; then
+        echo "  Покупатель подключается кнопкой «🚀 Подключиться»: дашборд открывается прямо"
+        echo "  в Telegram как мини-приложение, импорт в Hiddify / Incy / Throne — в одно касание."
+    else
+        echo "  ⚠️  Нет HTTPS на ${SUB_HOST}: мини-приложение в Telegram и ссылки бота не откроются."
+    fi
+}
+
 print_summary() {
     echo ""
     echo -e "${GREEN}${BOLD}==================================================================${NC}"
@@ -1153,11 +1447,11 @@ print_summary() {
     cat <<EOF
 
   Бот:                    https://t.me/${BOT_USERNAME}
-  Ссылки от бота:         https://${SUB_DOMAIN}/<имя клиента>
+  Дашборд (Mini App):     https://${SUB_DOMAIN}/<имя клиента>
   Подписка панели:        https://${MAIN_DOMAIN}:${PANEL_PORT}${PANEL_SUB_PATH}<имя клиента>
   Короткая ссылка:        https://${SUB_DOMAIN}${PANEL_SUB_PATH}<имя клиента>
 
-  Telegram ID клиента впишите в панели 2S-UI в поле «Описание» или «Telegram ID».
+$(summary_mode)
 
   Проверка:               sudo bash ${INSTALL_DIR}/install.sh status
   Изменить настройки:     sudo bash ${INSTALL_DIR}/install.sh reconfigure

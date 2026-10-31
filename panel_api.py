@@ -4,6 +4,7 @@
 """
 import base64
 import json
+import re
 import secrets
 import string
 import time
@@ -14,9 +15,29 @@ import aiohttp
 _ALNUM = string.digits + string.ascii_letters
 DAY = 86400
 
+# С 2S-UI 1.8.3 команда edit накладывает присланные поля на сохранённого клиента.
+# В более ранних версиях (и в исходной S-UI) edit заменял строку целиком: продление
+# одним-двумя полями стёрло бы клиенту ключи и входящие. Там же появились tgId (1.8.0)
+# и resetpolicy (1.8.3).
+MIN_PANEL_VERSION = (1, 8, 3)
+
 
 class PanelAPIError(Exception):
     pass
+
+
+class PanelVersionError(PanelAPIError):
+    """Версия панели не поддерживает автовыдачу."""
+
+
+def parse_version(value) -> tuple[int, ...]:
+    """«1.9.3», «v1.9.3», «1.9.3-beta» → (1, 9, 3); непонятное → ()."""
+    return tuple(int(x) for x in re.findall(r"\d+", str(value or ""))[:3])
+
+
+def version_supported(value) -> bool:
+    parsed = parse_version(value)
+    return bool(parsed) and parsed >= MIN_PANEL_VERSION
 
 
 def _seq(n: int) -> str:
@@ -91,6 +112,9 @@ class PanelAPI:
         self.reset_day_of_month = reset_day_of_month
         # Группа клиента в панели для купленных подписок; пусто — не задавать
         self.group = group
+        # Версия панели проверяется один раз, перед первой записью
+        self.version = ""
+        self._version_ok = False
 
     async def _call(self, method: str, action: str, *, params=None, form=None):
         try:
@@ -118,6 +142,24 @@ class PanelAPI:
             "object": "clients", "action": action, "data": json.dumps(data),
         })
 
+    async def panel_version(self) -> str:
+        """Версия панели из apiv2/status (appVersion есть с 2S-UI 1.4.2)."""
+        obj = await self._call("GET", "status", params={"r": "sys"})
+        return str(((obj or {}).get("sys") or {}).get("appVersion") or "")
+
+    async def ensure_supported(self):
+        """Не даёт писать в панель, где edit заменяет клиента целиком."""
+        if self._version_ok:
+            return
+        self.version = await self.panel_version()
+        if not version_supported(self.version):
+            shown = self.version or "неизвестна"
+            need = ".".join(map(str, MIN_PANEL_VERSION))
+            raise PanelVersionError(
+                f"версия панели {shown}, а для автовыдачи нужна 2S-UI {need} или новее: "
+                "в старых версиях продление стёрло бы клиенту ключи и входящие. Обновите панель")
+        self._version_ok = True
+
     async def get_client(self, client_id: int) -> dict | None:
         obj = await self._call("GET", "clients", params={"id": str(client_id)})
         rows = (obj or {}).get("clients") or []
@@ -125,6 +167,7 @@ class PanelAPI:
 
     async def create(self, tg_id: int, days: int) -> dict:
         """Создаёт клиента со случайным именем на `days` дней и возвращает его строку."""
+        await self.ensure_supported()
         last_error = None
         for _ in range(3):
             name = _seq(8)
@@ -163,6 +206,7 @@ class PanelAPI:
 
     async def extend(self, client_id: int, days: int, tg_id: int) -> dict:
         """Продлевает клиента на `days` дней от текущего срока (или от сейчас, если истёк) и включает его."""
+        await self.ensure_supported()
         client = await self.get_client(client_id)
         if not client:
             raise PanelAPIError(f"клиент #{client_id} не найден в панели")

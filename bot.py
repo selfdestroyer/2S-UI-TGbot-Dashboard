@@ -14,7 +14,7 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from panel_api import PanelAPI, PanelAPIError, expiry_seconds
+from panel_api import PanelAPI, PanelAPIError, PanelVersionError, expiry_seconds
 
 # Загружаем переменные окружения из .env
 ENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
@@ -1876,9 +1876,35 @@ async def cb_admin_confirm_broadcast(callback: types.CallbackQuery, state: FSMCo
         parse_mode="HTML"
     )
 
+async def check_panel_version():
+    """Автовыдача только на панели, где edit не затирает клиента; иначе — ручной режим."""
+    global panel_api
+    if not panel_api:
+        return
+    try:
+        await panel_api.ensure_supported()
+        logging.info(f"Панель 2S-UI {panel_api.version}: автовыдача подписок включена")
+    except PanelVersionError as e:
+        panel_api = None
+        logging.error(f"Автовыдача отключена: {e}")
+        try:
+            await bot.send_message(
+                ADMIN_TG_ID,
+                f"⚠️ <b>Автовыдача подписок отключена</b>\n\n{html.escape(str(e))}.\n\n"
+                "Пока бот работает в ручном режиме: после подтверждения оплаты создайте подписку в панели сами.",
+                parse_mode="HTML")
+        except Exception as send_error:
+            logging.error(f"Не удалось сообщить админу об отключении автовыдачи: {send_error}")
+    except PanelAPIError as e:
+        # Панель недоступна при старте — версия проверится перед первой выдачей
+        logging.warning(f"Не удалось проверить версию панели: {e}")
+
 async def main():
     # Инициализация таблицы истории уведомлений и очереди автоудалений
     init_bot_data_db()
+
+    # Старая панель затёрла бы клиентов при продлении — проверяем до приёма заявок
+    await check_panel_version()
     
     # Запуск фонового планировщика проверки подписок
     asyncio.create_task(expiry_checker_loop())
