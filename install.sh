@@ -423,6 +423,10 @@ read_panel_settings() {
     PANEL_WEB_PORT="$(panel_sql "select value from settings where key='webPort'")"
     PANEL_WEB_PATH="$(panel_sql "select value from settings where key='webPath'")"
     PANEL_WEB_CERT="$(panel_sql "select value from settings where key='webCertFile'")"
+    # Публичный адрес панели, если задан вручную (в режиме nginx панель заполняет его сама)
+    PANEL_WEB_URI="$(panel_sql "select value from settings where key='webURI'")"
+    # Режим nginx: TLS на сайте nginx панели (всегда 443), сама панель за ним по HTTP
+    PANEL_WEB_NGINX="$(panel_sql "select value from settings where key='webNginx'")"
     PANEL_WEB_PATH="${PANEL_WEB_PATH:-/app/}"
     [[ "$PANEL_WEB_PATH" == /* ]] || PANEL_WEB_PATH="/${PANEL_WEB_PATH}"
     [[ "$PANEL_WEB_PATH" == */ ]] || PANEL_WEB_PATH="${PANEL_WEB_PATH}/"
@@ -433,10 +437,34 @@ read_panel_settings() {
     fi
 }
 
-default_panel_api_url() {
+panel_api_candidates() {  # возможные адреса apiv2, от самого явного к прямому
     local host="${PANEL_WEB_DOMAIN:-$MAIN_DOMAIN}"
     [ -n "$host" ] || host="127.0.0.1"
+    # Явный публичный адрес панели (webURI), только если это настоящий URL
+    if [[ "${PANEL_WEB_URI:-}" =~ ^https?://[^/]+ ]]; then
+        echo "${PANEL_WEB_URI%/}/apiv2/"
+    fi
+    # Панель за своим сайтом nginx: снаружи она на 443-м порту, без номера порта в адресе
+    if [ "${PANEL_WEB_NGINX:-}" = "true" ]; then
+        echo "https://${host}${PANEL_WEB_PATH}apiv2/"
+    fi
     echo "${PANEL_WEB_SCHEME}://${host}:${PANEL_WEB_PORT:-2095}${PANEL_WEB_PATH}apiv2/"
+}
+
+apiv2_answers() {  # отвечает ли по адресу apiv2: без токена он возвращает {"success":false,"msg":"invalid token"}
+    curl -s --max-time 5 "${1}status" 2>/dev/null | grep -q '"success"'
+}
+
+default_panel_api_url() {  # первый кандидат, который действительно отвечает, иначе первый по списку
+    local url first=""
+    while read -r url; do
+        [ -n "$first" ] || first="$url"
+        if apiv2_answers "$url"; then
+            echo "$url"
+            return
+        fi
+    done < <(panel_api_candidates)
+    echo "$first"
 }
 
 check_panel_api() {  # печатает число входящих, код 1 и текст ошибки, если API не отвечает
@@ -1141,11 +1169,13 @@ setup_nginx_ssl() {
                 apply_nginx ssl
                 log_success "Сертификат получен, HTTPS: https://${SUB_DOMAIN}/"
             else
-                log_warning "Сертификат не получен (DNS ещё не обновился?). Сайт работает по HTTP."
+                log_warning "Сертификат не получен (DNS ещё не обновился?). Сайт работает по HTTP:"
+                log_warning "ссылки бота и мини-приложение в Telegram (оно открывается только по HTTPS) пока не работают."
                 log_warning "Позже: sudo bash ${INSTALL_DIR}/install.sh reconfigure"
             fi
         else
-            log_warning "Сайт работает без HTTPS, а бот выдаёт ссылки https:// — они не откроются."
+            log_warning "Сайт работает без HTTPS: ссылки бота (https://) и мини-приложение в Telegram"
+            log_warning "(оно открывается только по HTTPS) не откроются."
         fi
     fi
     mkdir -p "$(dirname "$RENEW_HOOK")"
@@ -1207,6 +1237,12 @@ dashboard_api_ok() {
         [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/)" = "200" ]
     fi
 }
+open_page_ok() {  # служебная страница импорта для мини-приложения: /open/<приложение>/<имя>
+    local name
+    name="$(panel_sql 'select name from clients limit 1')"
+    [ -n "$name" ] || return 0
+    [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8000/open/hiddify/$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1], safe=""))' "$name")")" = "200" ]
+}
 site_ok() {
     local scheme="http" port="80"
     cert_exists && { scheme="https"; port="$HTTPS_PORT"; }
@@ -1223,6 +1259,7 @@ health_check() {  # health_check "journalctl --since"
     hc "бот подключился к Telegram" bot_polling
     hc "бот читает базу панели" bot_db_ok
     hc "дашборд отдаёт данные из базы" dashboard_api_ok
+    hc "служебная страница мини-приложения (/open/) отвечает" open_page_ok
     hc "сайт ${SUB_HOST} отвечает через nginx" site_ok
     if [ -n "${PANEL_API_TOKEN:-}" ]; then
         hc "API панели принимает токен" check_panel_api
