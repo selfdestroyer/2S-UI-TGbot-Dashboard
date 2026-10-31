@@ -845,6 +845,31 @@ async def cb_my_subscription(callback: types.CallbackQuery, state: FSMContext):
     else:
         text, keyboard = subs_list_screen(subs)
     await show_screen(callback, text, keyboard)
+    await notify_admin_subscription_view(callback.from_user, subs)
+
+async def notify_admin_subscription_view(user: types.User, subs: list[dict]):
+    """Сообщает админу о каждом открытии «Ваша подписка»; свои нажатия админ не получает."""
+    if user.id == ADMIN_TG_ID:
+        return
+    mention = f"@{user.username}" if user.username else f"ID: {user.id}"
+    who = (f"👤 Пользователь: {html.escape(user.full_name)} ({html.escape(mention)})\n"
+           f"🆔 Telegram ID: <code>{user.id}</code>")
+    if subs:
+        lines = [f"✅ <b>Запрос подписки</b>\n{who}\n📦 Подписок: {len(subs)}\n"]
+        for s in subs:
+            title = html.escape(sub_title(s))
+            name = f" (<code>{html.escape(s['name'])}</code>)" if s.get("label") else ""
+            lines.append(f"• {title}{name} — {sub_state(s)}, {s['date_str']}: {html.escape(dashboard_url(s['name']))}")
+        text = "\n".join(lines)
+    else:
+        pending = get_pending_order(user.id)
+        note = (f"\n⏳ Заявка №{pending['id']} на проверке." if pending
+                else "\n<i>Его ID не найден в базе панели.</i>")
+        text = f"⚠️ <b>Попытка доступа без подписки</b>\n{who}{note}"
+    try:
+        await bot.send_message(ADMIN_TG_ID, text, parse_mode="HTML", disable_web_page_preview=True)
+    except Exception as e:
+        logging.error(f"Не удалось отправить уведомление админу: {e}")
 
 @dp.callback_query(F.data.startswith("sub:"))
 async def cb_sub_card(callback: types.CallbackQuery, state: FSMContext):
