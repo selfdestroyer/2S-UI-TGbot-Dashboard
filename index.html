@@ -2817,6 +2817,37 @@ window.SUPPORT_BOT_USERNAME = window.SUPPORT_BOT_USERNAME || "your_support_bot";
 // Необязательно: полный адрес подписок панели без имени клиента, например https://example.com:2096/sub
 window.PANEL_SUB_URL = window.PANEL_SUB_URL || "";
 
+// Telegram Mini App: бот открывает эту страницу кнопкой «🚀 Подключиться». Telegram передаёт
+// tgWebAppData в адресе; только тогда грузим его скрипт, в обычном браузере ничего не меняется.
+(function () {
+  'use strict';
+  window.IN_TG_MINIAPP = /tgWebApp/.test(location.hash + location.search);
+  if (!window.IN_TG_MINIAPP) return;
+  var s = document.createElement('script');
+  s.src = 'https://telegram.org/js/telegram-web-app.js';
+  s.onload = function () {
+    var tg = window.Telegram && window.Telegram.WebApp;
+    if (!tg) return;
+    tg.ready();
+    tg.expand();
+  };
+  document.head.appendChild(s);
+  // Внешние ссылки из Mini App открываем средствами Telegram, иначе они откроются внутри окна
+  // или не откроются вовсе. Ссылки импорта (hiddify://, incy://, throne://) не трогаем.
+  document.addEventListener('click', function (e) {
+    var tg = window.Telegram && window.Telegram.WebApp;
+    var a = e.target.closest ? e.target.closest('a[href]') : null;
+    if (!tg || !a) return;
+    if (/^https:\/\/t\.me\//i.test(a.href)) {
+      e.preventDefault();
+      tg.openTelegramLink(a.href);
+    } else if (/^https?:/i.test(a.href) && a.target === '_blank') {
+      e.preventDefault();
+      tg.openLink(a.href);
+    }
+  }, true);
+})();
+
 (function () {
   'use strict';
 
@@ -2975,7 +3006,7 @@ window.PANEL_SUB_URL = window.PANEL_SUB_URL || "";
     var box = $('action');
     box.innerHTML = '<div class="swap action">' + html + '</div>';
     var open = $('btn-open');
-    if (open) open.addEventListener('click', watchOpen);
+    if (open) open.addEventListener('click', onOpenClick);
   }
 
   function renderApps() {
@@ -3034,6 +3065,35 @@ window.PANEL_SUB_URL = window.PANEL_SUB_URL || "";
   syncSeg();
   renderAction();
   window.matchMedia('(max-width: 899px)').addEventListener('change', renderAction);
+
+  /* ================= Импорт из Telegram Mini App ================= */
+  // Внутри мини-приложения Telegram пропускает только http(s) — hiddify://, incy://, throne://
+  // там не открываются (ERR_UNKNOWN_URL_SCHEME). Поэтому через Telegram открываем служебную
+  // страницу /open/<приложение>/<имя> (app.py): она сразу переходит по ссылке импорта,
+  // и встроенный браузер Telegram передаёт её приложению, закрываясь сам.
+  // ?open=<приложение> на этой странице — то же для обычного браузера: выбрать и запустить.
+  function onOpenClick(e) {
+    if (!window.IN_TG_MINIAPP) { watchOpen(); return; }
+    e.preventDefault();
+    var url = location.origin + '/open/' + encodeURIComponent(current) + '/' + encodeURIComponent(username);
+    var tg = window.Telegram && window.Telegram.WebApp;
+    if (tg && tg.openLink) tg.openLink(url);
+    else window.open(url, '_blank');
+  }
+
+  var openParam = params.get('open');
+  if (openParam && APPS[openParam] && !window.IN_TG_MINIAPP) {
+    selectApp(openParam);
+    params.delete('open');
+    try { history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '')); } catch (e) {}
+    var autoBtn = $('btn-open');
+    if (autoBtn) {
+      setTimeout(function () {
+        location.href = autoBtn.href;
+        watchOpen();
+      }, 400);
+    }
+  }
 
   /* ================= «Не открылось?» ================= */
   var openTimer = null;

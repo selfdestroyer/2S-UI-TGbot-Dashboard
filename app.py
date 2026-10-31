@@ -3,10 +3,11 @@ import re
 import json
 import html
 import time
+import base64
 import sqlite3
 from urllib.parse import quote
 from datetime import datetime, date
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from dotenv import load_dotenv
 
@@ -337,6 +338,84 @@ def get_404_html() -> str:
     </div>
 </body>
 </html>"""
+
+# Импорт в приложение из Telegram Mini App. Из мини-приложения Telegram открывает только
+# http(s), поэтому кнопка «Открыть в …» ведёт сюда через Telegram.WebApp.openLink. Страница
+# первой же строкой переходит по ссылке импорта: встроенный браузер Telegram передаёт её
+# приложению и закрывается, не успев показать страницу. Если приложения нет — подсказка.
+OPEN_APPS = {
+    "hiddify": {"name": "Hiddify",
+                "ios": "https://apps.apple.com/app/hiddify-proxy-vpn/id6596777532",
+                "android": "https://play.google.com/store/apps/details?id=app.hiddify.com",
+                "pc": "https://github.com/hiddify/hiddify-app/releases"},
+    "incy": {"name": "Incy",
+             "ios": "https://apps.apple.com/app/incy/id6756943388",
+             "android": "https://play.google.com/store/apps/details?id=llc.itdev.incy",
+             "pc": "https://incy.cc/"},
+    "throne": {"name": "Throne", "pc": "https://github.com/throneproj/Throne/releases"},
+}
+
+def build_import_link(app_id: str, username: str, host: str) -> str:
+    """Ссылка импорта — та же, что строит index.html (APPS[...].deeplink)."""
+    main_domain = os.getenv("MAIN_DOMAIN", "").strip() or re.sub(r"^sub\.", "", host, flags=re.I)
+    panel_port = os.getenv("PANEL_PORT", "2096").strip() or "2096"
+    sub_base = os.getenv("PANEL_SUB_URL", "").strip().rstrip("/") or f"https://{main_domain}:{panel_port}/sub"
+    sub_url = f"{sub_base}/{username}"
+    if app_id == "hiddify":
+        return f"hiddify://import/{sub_url}"
+    # Набор как у encodeURIComponent в JS
+    uri_safe = "-_.!~*'()"
+    if app_id == "incy":
+        return "incy://add/" + quote(sub_url, safe=uri_safe)
+    project_name = os.getenv("PROJECT_NAME", "").strip() or "VPN Service"
+    payload = sub_url + "#" + quote(project_name, safe=uri_safe)
+    return "throne://addsub/" + base64.b64encode(payload.encode("utf-8")).decode()
+
+@app.get("/open/{app_id}/{username}")
+async def open_in_app(app_id: str, username: str, request: Request):
+    target = OPEN_APPS.get(app_id)
+    if not target or not check_user_exists(username):
+        return HTMLResponse(content=get_404_html(), status_code=404)
+
+    link = build_import_link(app_id, username, request.url.hostname or "")
+    name = target["name"]
+    stores = "".join(
+        f'<a class="btn btn-g" href="{html.escape(target[key])}" target="_blank" rel="noopener">{label}</a>'
+        for key, label in (("ios", "App Store"), ("android", "Google Play"), ("pc", "Для компьютера"))
+        if key in target
+    )
+    page = f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Открываем {name}…</title>
+<script>location.replace({json.dumps(link).replace("</", "<\\/")});</script>
+<style>
+  body {{ margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+         background: #0d1117; color: #e6edf3; font: 15px/1.5 -apple-system, system-ui, sans-serif; }}
+  .box {{ max-width: 360px; padding: 24px; text-align: center; }}
+  h1 {{ font-size: 20px; margin: 0 0 8px; }}
+  p {{ color: #8b949e; margin: 0 0 20px; }}
+  .btn {{ display: block; margin: 10px 0; padding: 12px; border-radius: 12px; text-decoration: none;
+          font-weight: 600; color: #fff; background: #1f6feb; }}
+  .btn-g {{ background: #21262d; color: #e6edf3; }}
+  .stores {{ margin-top: 18px; }}
+  a.back {{ color: #8b949e; font-size: 14px; }}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Открываем {name}…</h1>
+  <p>Если приложение не открылось само, нажмите кнопку.</p>
+  <a class="btn" href="{html.escape(link)}">Открыть в {name}</a>
+  <div class="stores"><p>Нет {name}? Установите:</p>{stores}</div>
+  <p><a class="back" href="/{html.escape(quote(username))}">← Вернуться к подписке</a></p>
+</div>
+</body>
+</html>"""
+    return HTMLResponse(content=page, headers={"Cache-Control": "no-store"})
 
 @app.api_route("/{sub_path:path}", methods=["GET", "HEAD"])
 async def verify_and_serve(sub_path: str, response: Response):

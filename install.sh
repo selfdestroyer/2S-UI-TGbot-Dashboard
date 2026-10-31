@@ -325,6 +325,10 @@ compose_sub_domain() {
 }
 
 card_requisites() {  # текст реквизитов по номеру карты (\n — перевод строки для бота)
+    printf '%s' "Карта: <code>$1</code>\n<i>Нажмите на номер, чтобы скопировать</i>"
+}
+
+legacy_card_requisites() {  # так card_requisites выглядел раньше: тоже считается режимом «номер карты»
     printf '%s' "💳 <b>ПЕРЕВОД ПО НОМЕРУ КАРТЫ:</b>\n<code>$1</code>\n<i>(нажмите на номер, чтобы скопировать)</i>"
 }
 
@@ -566,7 +570,8 @@ wizard() {
     local pay_mode="card"
     if [ -n "$CLI_PAYMENT_MODE" ]; then
         pay_mode="$CLI_PAYMENT_MODE"
-    elif [ -n "$PAYMENT_REQUISITES" ] && [ "$PAYMENT_REQUISITES" != "$(card_requisites "$CARD_NUMBER")" ]; then
+    elif [ -n "$PAYMENT_REQUISITES" ] && [ "$PAYMENT_REQUISITES" != "$(card_requisites "$CARD_NUMBER")" ] \
+            && [ "$PAYMENT_REQUISITES" != "$(legacy_card_requisites "$CARD_NUMBER")" ]; then
         pay_mode="custom"
     fi
     if [ "$NON_INTERACTIVE" = false ]; then
