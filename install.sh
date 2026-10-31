@@ -98,7 +98,8 @@ show_help() {
   --card <number>          Номер карты для оплаты
   --requisites <text>      Свой текст реквизитов (HTML, перевод строки — \\n)
   --tariffs <list>         Тарифы: дни:цена[:скидка%],... (по умолчанию ${DEFAULT_TARIFFS})
-  --db <path>              Путь к s-ui.db (по умолчанию ищется автоматически)
+  --db <path>              Путь к s-ui.db (по умолчанию ищется автоматически, мастер спрашивает
+                           его, только если база не найдена или не подходит)
   --panel-port <port>      Порт подписок панели (по умолчанию из настроек панели)
   --https-port <port>      Порт HTTPS для дашборда, если 443 занят
   --tz <zone>              Часовой пояс для дат в уведомлениях, например Europe/Moscow
@@ -765,16 +766,26 @@ install_packages() {
 
 wizard() {
     section "1/9 База панели 2S-UI"
+    # Путь спрашиваем, только если база не нашлась сама или не подошла (другой путь — флаг --db)
     find_panel_db
-    while true; do
-        ask DB_PATH "Путь к s-ui.db" "${DB_PATH:-$DEFAULT_DB_PATH}"
-        local err
-        if err="$(validate_panel_db)"; then
-            break
+    local err=""
+    if [ -n "$DB_PATH" ] && err="$(validate_panel_db)"; then
+        log_success "База панели найдена: ${DB_PATH}"
+    else
+        if [ -n "$DB_PATH" ]; then
+            log_warning "База ${DB_PATH} не подходит: ${err}"
+        else
+            log_warning "База панели s-ui.db не найдена автоматически."
         fi
-        log_warning "База ${DB_PATH} не подходит: ${err}"
-        [ "$NON_INTERACTIVE" = true ] && die "Укажите правильный путь через --db."
-    done
+        [ "$NON_INTERACTIVE" = true ] && die "Укажите путь к s-ui.db через --db."
+        while true; do
+            ask DB_PATH "Путь к s-ui.db" "${DB_PATH:-$DEFAULT_DB_PATH}"
+            if err="$(validate_panel_db)"; then
+                break
+            fi
+            log_warning "База ${DB_PATH} не подходит: ${err}"
+        done
+    fi
     read_panel_settings
     log_success "Клиентов в панели: $(panel_sql 'select count(*) from clients')"
 
